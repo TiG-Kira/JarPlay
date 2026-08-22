@@ -1,0 +1,8 @@
+com.android.dx.dexlib-pngs-0 D:\JarPlay\JarPlay\JarPlay\dexlib\build\generated\res\pngs\debug
+com.android.dx.dexlib-updated_navigation_xml-1 D:\JarPlay\JarPlay\JarPlay\dexlib\build\generated\updated_navigation_xml\debug
+com.android.dx.dexlib-mergeDebugResources-2 D:\JarPlay\JarPlay\JarPlay\dexlib\build\intermediates\incremental\debug\mergeDebugResources\merged.dir
+com.android.dx.dexlib-mergeDebugResources-3 D:\JarPlay\JarPlay\JarPlay\dexlib\build\intermediates\incremental\debug\mergeDebugResources\stripped.dir
+com.android.dx.dexlib-debug-4 D:\JarPlay\JarPlay\JarPlay\dexlib\build\intermediates\merged_res\debug\mergeDebugResources
+com.android.dx.dexlib-debug-5 D:\JarPlay\JarPlay\JarPlay\dexlib\build\intermediates\packaged_res\debug\packageDebugResources
+com.android.dx.dexlib-debug-6 D:\JarPlay\JarPlay\JarPlay\dexlib\src\debug\res
+com.android.dx.dexlib-main-7 D:\JarPlay\JarPlay\JarPlay\dexlib\src\main\res
