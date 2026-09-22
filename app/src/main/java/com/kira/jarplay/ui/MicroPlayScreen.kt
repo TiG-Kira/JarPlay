@@ -11,13 +11,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -339,36 +342,39 @@ private fun MicroPlayControls(
     }
 
     if (showTopBar) {
-        SmallTopAppBar(
-            title = title,
-            navigationIcon = {
-                IconButton(onClick = { callbacks.onClose() }) {
-                    Icon(
-                        imageVector = MiuixIcons.Back,
-                        contentDescription = stringResource(R.string.play_exit)
-                    )
+        // 顶部工具栏占据真实高度（不覆盖画面）；状态栏可见时下移，避免被状态栏压住
+        Column(modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars)) {
+            SmallTopAppBar(
+                title = title,
+                navigationIcon = {
+                    IconButton(onClick = { callbacks.onClose() }) {
+                        Icon(
+                            imageVector = MiuixIcons.Back,
+                            contentDescription = stringResource(R.string.play_exit)
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { callbacks.onToggleKeyboard() }) {
+                        Image(
+                            painter = painterResource(R.drawable.ic_action_keyboard),
+                            contentDescription = stringResource(R.string.play_toggle_keyboard),
+                            colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    WindowIconDropdownMenu(
+                        entry = menuEntry,
+                        backgroundColor = Color.Transparent,
+                    ) {
+                        Icon(
+                            imageVector = MiuixIcons.More,
+                            contentDescription = stringResource(R.string.more_options)
+                        )
+                    }
                 }
-            },
-            actions = {
-                IconButton(onClick = { callbacks.onToggleKeyboard() }) {
-                    Image(
-                        painter = painterResource(R.drawable.ic_action_keyboard),
-                        contentDescription = stringResource(R.string.play_toggle_keyboard),
-                        colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.onSurface),
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                WindowIconDropdownMenu(
-                    entry = menuEntry,
-                    backgroundColor = Color.Transparent,
-                ) {
-                    Icon(
-                        imageVector = MiuixIcons.More,
-                        contentDescription = stringResource(R.string.more_options)
-                    )
-                }
-            }
-        )
+            )
+        }
     } else {
         // 沉浸模式：只保留一个浮动的菜单按钮，尽量不遮挡画面
         Row(

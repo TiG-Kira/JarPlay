@@ -162,13 +162,13 @@ fun ConfigDetailScreen(
                     ScreenSizeRow(
                         width = current.screenWidth,
                         height = current.screenHeight,
-                        onWidthChange = { params = current.copy(screenWidth = it) },
-                        onHeightChange = { params = current.copy(screenHeight = it) },
+                        onWidthChange = { params = current.editCopy { screenWidth = it } },
+                        onHeightChange = { params = current.editCopy { screenHeight = it } },
                         onSwap = {
-                            params = current.copy(
-                                screenWidth = current.screenHeight,
+                            params = current.editCopy {
+                                screenWidth = current.screenHeight
                                 screenHeight = current.screenWidth
-                            )
+                            }
                         }
                     )
 
@@ -176,7 +176,7 @@ fun ConfigDetailScreen(
                         label = stringResource(R.string.PREF_SCALE_RATIO),
                         value = current.screenScaleRatio.toString(),
                         onValueChange = { v ->
-                            params = current.copy(screenScaleRatio = v.toIntOrNull() ?: 100)
+                            params = current.editCopy { screenScaleRatio = v.toIntOrNull() ?: 100 }
                         }
                     )
 
@@ -185,7 +185,7 @@ fun ConfigDetailScreen(
                         selectedIndex = current.screenScaleType.coerceIn(0, scaleTypeEntries.lastIndex),
                         title = stringResource(R.string.pref_screen_scale_type),
                         summary = stringResource(R.string.pref_screen_scale_type_summary),
-                        onSelectedIndexChange = { params = current.copy(screenScaleType = it) }
+                        onSelectedIndexChange = { params = current.editCopy { screenScaleType = it } }
                     )
 
                     OverlayDropdownPreference(
@@ -194,64 +194,64 @@ fun ConfigDetailScreen(
                         title = stringResource(R.string.pref_screen_gravity),
                         summary = stringResource(R.string.pref_screen_gravity_summary),
                         enabled = current.screenScaleType != ProfileModel.SCALE_TYPE_FILL,
-                        onSelectedIndexChange = { params = current.copy(screenGravity = it) }
+                        onSelectedIndexChange = { params = current.editCopy { screenGravity = it } }
                     )
 
                     ColorPickerRow(
                         label = stringResource(R.string.PREF_BACKGROUND),
                         color = current.screenBackgroundColor,
-                        onColorChanged = { c -> params = current.copy(screenBackgroundColor = c) }
+                        onColorChanged = { c -> params = current.editCopy { screenBackgroundColor = c } }
                     )
 
                     OverlayDropdownPreference(
                         items = screenOrientationEntries.toList(),
                         selectedIndex = current.orientation.coerceIn(0, screenOrientationEntries.lastIndex),
                         title = stringResource(R.string.PREF_ORIENTATION),
-                        onSelectedIndexChange = { params = current.copy(orientation = it) }
+                        onSelectedIndexChange = { params = current.editCopy { orientation = it } }
                     )
 
                     OverlayDropdownPreference(
                         items = graphicsModeEntries.toList(),
                         selectedIndex = current.graphicsMode.coerceIn(0, graphicsModeEntries.lastIndex),
                         title = stringResource(R.string.pref_graphics_mode_title),
-                        onSelectedIndexChange = { params = current.copy(graphicsMode = it) }
+                        onSelectedIndexChange = { params = current.editCopy { graphicsMode = it } }
                     )
 
                     SwitchPreference(
                         title = stringResource(R.string.PREF_FILTER),
                         checked = current.screenFilter,
-                        onCheckedChange = { params = current.copy(screenFilter = it) }
+                        onCheckedChange = { params = current.editCopy { screenFilter = it } }
                     )
 
                     SwitchPreference(
                         title = stringResource(R.string.PREF_IMMEDIATE),
                         checked = current.immediateMode,
-                        onCheckedChange = { params = current.copy(immediateMode = it) }
+                        onCheckedChange = { params = current.editCopy { immediateMode = it } }
                     )
 
                     SwitchPreference(
                         title = stringResource(R.string.parallel_screen_redrawing),
                         checked = current.parallelRedrawScreen,
-                        onCheckedChange = { params = current.copy(parallelRedrawScreen = it) }
+                        onCheckedChange = { params = current.editCopy { parallelRedrawScreen = it } }
                     )
 
                     SwitchPreference(
                         title = stringResource(R.string.PREF_FORCE_FULLSCREEN),
                         checked = current.forceFullscreen,
-                        onCheckedChange = { params = current.copy(forceFullscreen = it) }
+                        onCheckedChange = { params = current.editCopy { forceFullscreen = it } }
                     )
 
                     SwitchPreference(
                         title = stringResource(R.string.PREF_SHOW_FPS),
                         checked = current.showFps,
-                        onCheckedChange = { params = current.copy(showFps = it) }
+                        onCheckedChange = { params = current.editCopy { showFps = it } }
                     )
 
                     TextFieldRow(
                         label = stringResource(R.string.PREF_LIMIT_FPS),
                         value = if (current.fpsLimit > 0) current.fpsLimit.toString() else "",
                         onValueChange = { v ->
-                            params = current.copy(fpsLimit = v.toIntOrNull() ?: 0)
+                            params = current.editCopy { fpsLimit = v.toIntOrNull() ?: 0 }
                         }
                     )
                 }
@@ -264,21 +264,21 @@ fun ConfigDetailScreen(
                         small = current.fontSizeSmall,
                         medium = current.fontSizeMedium,
                         large = current.fontSizeLarge,
-                        onSmallChange = { params = current.copy(fontSizeSmall = it) },
-                        onMediumChange = { params = current.copy(fontSizeMedium = it) },
-                        onLargeChange = { params = current.copy(fontSizeLarge = it) }
+                        onSmallChange = { params = current.editCopy { fontSizeSmall = it } },
+                        onMediumChange = { params = current.editCopy { fontSizeMedium = it } },
+                        onLargeChange = { params = current.editCopy { fontSizeLarge = it } }
                     )
 
                     SwitchPreference(
                         title = stringResource(R.string.PREF_FONT_SIZE_IN_SP),
                         checked = current.fontApplyDimensions,
-                        onCheckedChange = { params = current.copy(fontApplyDimensions = it) }
+                        onCheckedChange = { params = current.editCopy { fontApplyDimensions = it } }
                     )
 
                     SwitchPreference(
                         title = stringResource(R.string.PREF_FONT_ANTI_ALIASING),
                         checked = current.fontAA,
-                        onCheckedChange = { params = current.copy(fontAA = it) }
+                        onCheckedChange = { params = current.editCopy { fontAA = it } }
                     )
                 }
             }
@@ -289,20 +289,20 @@ fun ConfigDetailScreen(
                     SwitchPreference(
                         title = stringResource(R.string.PREF_TOUCH_INPUT),
                         checked = current.touchInput,
-                        onCheckedChange = { params = current.copy(touchInput = it) }
+                        onCheckedChange = { params = current.editCopy { touchInput = it } }
                     )
 
                     OverlayDropdownPreference(
                         items = layoutEntries.toList(),
                         selectedIndex = current.keyCodesLayout.coerceIn(0, layoutEntries.lastIndex),
                         title = stringResource(R.string.PREF_LAYOUT),
-                        onSelectedIndexChange = { params = current.copy(keyCodesLayout = it) }
+                        onSelectedIndexChange = { params = current.editCopy { keyCodesLayout = it } }
                     )
 
                     SwitchPreference(
                         title = stringResource(R.string.PREF_VIRTUAL_KEYBOARD_OPTIONS),
                         checked = current.showKeyboard,
-                        onCheckedChange = { params = current.copy(showKeyboard = it) }
+                        onCheckedChange = { params = current.editCopy { showKeyboard = it } }
                     )
 
                     if (current.showKeyboard) {
@@ -310,24 +310,24 @@ fun ConfigDetailScreen(
                             items = buttonShapeEntries.toList(),
                             selectedIndex = current.vkButtonShape.coerceIn(0, buttonShapeEntries.lastIndex),
                             title = stringResource(R.string.pref_button_shape_title),
-                            onSelectedIndexChange = { params = current.copy(vkButtonShape = it) }
+                            onSelectedIndexChange = { params = current.editCopy { vkButtonShape = it } }
                         )
 
                         SwitchPreference(
                             title = stringResource(R.string.PREF_VK_FEEDBACK),
                             checked = current.vkFeedback,
-                            onCheckedChange = { params = current.copy(vkFeedback = it) }
+                            onCheckedChange = { params = current.editCopy { vkFeedback = it } }
                         )
 
                         SwitchPreference(
                             title = stringResource(R.string.PREF_VK_FORCE_OPACITY),
                             checked = current.vkForceOpacity,
-                            onCheckedChange = { params = current.copy(vkForceOpacity = it) }
+                            onCheckedChange = { params = current.editCopy { vkForceOpacity = it } }
                         )
 
                         SliderPreference(
                             value = current.vkAlpha.toFloat(),
-                            onValueChange = { params = current.copy(vkAlpha = it.toInt().coerceIn(0, 255)) },
+                            onValueChange = { params = current.editCopy { vkAlpha = it.toInt().coerceIn(0, 255) } },
                             title = stringResource(R.string.PREF_VK_ALPHA),
                             valueText = current.vkAlpha.toString(),
                             valueRange = 0f..255f
@@ -337,38 +337,38 @@ fun ConfigDetailScreen(
                             label = stringResource(R.string.PREF_VK_HIDE_DELAY),
                             value = if (current.vkHideDelay > 0) current.vkHideDelay.toString() else "",
                             onValueChange = { v ->
-                                params = current.copy(vkHideDelay = v.toIntOrNull() ?: 0)
+                                params = current.editCopy { vkHideDelay = v.toIntOrNull() ?: 0 }
                             }
                         )
 
                         ColorPickerRow(
                             label = stringResource(R.string.PREF_VK_FORE),
                             color = current.vkFgColor,
-                            onColorChanged = { c -> params = current.copy(vkFgColor = c) }
+                            onColorChanged = { c -> params = current.editCopy { vkFgColor = c } }
                         )
 
                         ColorPickerRow(
                             label = stringResource(R.string.PREF_VK_BACK),
                             color = current.vkBgColor,
-                            onColorChanged = { c -> params = current.copy(vkBgColor = c) }
+                            onColorChanged = { c -> params = current.editCopy { vkBgColor = c } }
                         )
 
                         ColorPickerRow(
                             label = stringResource(R.string.PREF_VK_SEL_FORE),
                             color = current.vkFgColorSelected,
-                            onColorChanged = { c -> params = current.copy(vkFgColorSelected = c) }
+                            onColorChanged = { c -> params = current.editCopy { vkFgColorSelected = c } }
                         )
 
                         ColorPickerRow(
                             label = stringResource(R.string.PREF_VK_SEL_BACK),
                             color = current.vkBgColorSelected,
-                            onColorChanged = { c -> params = current.copy(vkBgColorSelected = c) }
+                            onColorChanged = { c -> params = current.editCopy { vkBgColorSelected = c } }
                         )
 
                         ColorPickerRow(
                             label = stringResource(R.string.PREF_VK_OUTLINE),
                             color = current.vkOutlineColor,
-                            onColorChanged = { c -> params = current.copy(vkOutlineColor = c) }
+                            onColorChanged = { c -> params = current.editCopy { vkOutlineColor = c } }
                         )
                     }
                 }
@@ -379,7 +379,7 @@ fun ConfigDetailScreen(
                 SettingCard {
                     TextField(
                         value = current.systemProperties ?: "",
-                        onValueChange = { v -> params = current.copy(systemProperties = v) },
+                        onValueChange = { v -> params = current.editCopy { systemProperties = v } },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(BasicComponentDefaults.InsideMargin)
@@ -570,11 +570,11 @@ private fun ColorPickerRow(
     }
 }
 
-/** 该页面未使用的占位，保持与旧实现一致的字体大小标签宽度。 */
-@Composable
-@Suppress("unused")
-private fun LabelColumn(text: String) {
-    Column(modifier = Modifier.height(0.dp)) {
-        Text(text = text, fontWeight = FontWeight.Medium)
-    }
-}
+/**
+ * 复制一份配置并就地修改字段。
+ *
+ * Java 的 [ProfileModel.copy] 没有参数，无法使用 Kotlin 具名参数，
+ * 因此这里提供一个 `apply` 风格的包装，让调用点保持可读。
+ */
+private inline fun ProfileModel.editCopy(block: ProfileModel.() -> Unit): ProfileModel =
+    copy().apply(block)

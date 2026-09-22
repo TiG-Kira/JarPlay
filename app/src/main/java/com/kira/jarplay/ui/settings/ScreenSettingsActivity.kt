@@ -112,7 +112,8 @@ fun ScreenSettingsScreen(onBack: () -> Unit) {
                         key = Constants.PREF_ADD_CUTOUT_AREA,
                         titleRes = R.string.pref_add_cutout_area_title,
                         summaryRes = R.string.pref_add_cutout_area_summary,
-                    )                    DisplaySwitch(
+                    )
+                    DisplaySwitch(
                         preferences = preferences,
                         revision = revision,
                         key = Constants.PREF_BLACK_BACKGROUND,

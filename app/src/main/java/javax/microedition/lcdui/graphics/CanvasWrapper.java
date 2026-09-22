@@ -5,6 +5,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.util.TypedValue;
@@ -76,6 +77,16 @@ public class CanvasWrapper {
 		Bitmap bitmap = image.getBitmap();
 		bitmap.prepareToDraw();
 		canvas.drawBitmap(bitmap, image.getBounds(), dst, imgPaint);
+	}
+
+	/**
+	 * 只取源图的一块子矩形绘制到目标矩形上。
+	 * 用于把帧缓冲里“游戏真正画过的那部分”铺满显示区域。
+	 */
+	public void drawImage(Image image, Rect src, RectF dst) {
+		Bitmap bitmap = image.getBitmap();
+		bitmap.prepareToDraw();
+		canvas.drawBitmap(bitmap, src, dst, imgPaint);
 	}
 
 	public void fillRect(RectF rect) {

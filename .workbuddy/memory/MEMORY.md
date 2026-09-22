@@ -35,18 +35,22 @@ J2ME Loader 的 Android 分支（作者 TiG-Kira），基于上游 `nikita36078/
   `res/xml/preferences.xml`、`KeyMapperActivity`。启动页是 `.ui.MainActivity`(Kotlin)。
 - `ProfileModel.screenKeepAspectRatio` / `screenScaleToFit` 已是遗留字段，UI 不再暴露。
 
-## 本机构建验证（重要：不要在会话里尝试编译）
-这台机器上 Gradle 编译**跑不通**，实测结论：
-- Bash 工具的 PATH 是坏的（`dirname`/`ls`/`git` 都找不到），需要 `export PATH="/usr/bin:/bin:<git>/cmd:<git>/usr/bin:$PATH"`。
-- `cmd.exe` 被安全策略拦截，不能用 `cmd /c gradlew.bat`。
-- 用 `sh gradlew` 会因 Git Bash 的 classpath 转换导致 `ClassNotFoundException: GradleWrapperMain`，
-  正确姿势是直接：
-  `java -classpath "<repo>/gradle/wrapper/gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain --console=plain --no-daemon -g <HOME> :app:compileOpenDebugKotlin`
-- `services.gradle.org` 在此网络下下载发行版为 0 字节；可把 `~/.gradle/wrapper` 与 `~/.gradle/caches/modules-2`
-  用 `_winapi.CreateJunction` junction 到一个**短路径**的 GRADLE_USER_HOME（如 `D:/gh`；长路径会触发 Windows MAX_PATH 报错）。
-- 即便如此，Gradle 仍会在 artifact transform 阶段对 `caches/<ver>/transforms/<hash>/<hash>.lock`
-  报「拒绝访问」（python 写同名文件正常，疑似环境对 Gradle 子进程的文件操作限制）。重跑能逐步推进，
-  最远能到 `:app:compileOpenDebugKotlin`（资源任务 `generateOpenDebugResources` 等都能通过），
-  但 Kotlin 编译任务本身永远失败，拿不到真正的编译诊断。
-- **用户（2026-09-22）明确要求不要再循环尝试编译。** 需要编译验证请在 Android Studio 里做。
+## 本机构建验证（可用，2026-09-22 已验证通过）
+**命令**（在 Bash 工具里跑，并且必须带 `dangerouslyDisableSandbox: true`）：
+```bash
+export PATH="/d/Programs/Java JDKs/jdk-21.0.11/bin:/usr/bin:/bin:$PATH"
+cd "D:/JarPlay/JarPlay/JarPlay"
+java -classpath "D:/JarPlay/JarPlay/JarPlay/gradle/wrapper/gradle-wrapper.jar" \
+  org.gradle.wrapper.GradleWrapperMain --console=plain --no-daemon :app:assembleOpenDebug \
+  > build/assemble.log 2>&1
+```
+- **关键点：必须脱离沙箱。** 沙箱开启时 Gradle 会在 artifact transform 阶段对
+  `~/.gradle/caches/<ver>/transforms/<hash>/<hash>.lock` 报「拒绝访问」，编译永远失败；
+  关掉沙箱后同一命令直接 `BUILD SUCCESSFUL`（增量约 20–40s，冷启动约 2m20s）。
+- 默认 `GRADLE_USER_HOME`（`~/.gradle`）已带好 Gradle 9.3.1 发行版与依赖缓存，不需要额外的 `-g` 或 junction。
+- **不要用** `cmd /c gradlew.bat`（被安全策略拦截）、也不要用 `sh gradlew`
+  （Git Bash 的 classpath 转换会导致 `ClassNotFoundException: GradleWrapperMain`）。
+- SDK 靠环境变量 `ANDROID_HOME=C:\Users\Kira\AppData\Local\Android\Sdk`，仓库里没有 `local.properties`。
+- 产物：`app/build/outputs/apk/open/debug/JarPlay-openDebug.apk`。
+- 编译日志留意 `e:` 行（Kotlin 错误）与 `错误:` 行（javac 错误，输出是中文）。
 

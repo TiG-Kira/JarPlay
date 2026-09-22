@@ -19,6 +19,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
+import androidx.navigationevent.compose.rememberNavigationEventDispatcherOwner
 import androidx.preference.PreferenceManager
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -74,7 +76,19 @@ fun JarPlayTheme(content: @Composable () -> Unit) {
     }
 
     val isDark = isDarkTheme(colorMode)
-    CompositionLocalProvider(LocalColorMode provides colorMode) {
+
+    /*
+     * Miuix 的弹窗（WindowDialog / WindowIconDropdownMenu / OverlayDialog 等）内部会注册
+     * 返回手势处理器，需要宿主提供 LocalNavigationEventDispatcherOwner。
+     * 本项目的宿主 Activity 版本不会提供它，因此这里显式创建一个“根”分发器
+     * （parent 必须显式传 null，否则默认值会去读同一个 local 而直接抛异常）。
+     */
+    val navigationEventOwner = rememberNavigationEventDispatcherOwner(true, null)
+
+    CompositionLocalProvider(
+        LocalColorMode provides colorMode,
+        LocalNavigationEventDispatcherOwner.provides(navigationEventOwner)
+    ) {
         MiuixTheme(controller = controller) {
             SystemUiEffect(isDark = isDark)
             content()

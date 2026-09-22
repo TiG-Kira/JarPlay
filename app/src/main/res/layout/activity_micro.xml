@@ -9,10 +9,20 @@
     tools:context="javax.microedition.shell.MicroActivity">
 
     <!--
+        顶部工具栏。
+        只在设置里打开"顶部工具栏"时使用；它占据自己的高度，把下面的画面区域压下去，
+        而不是浮在画面上，因此不会遮挡游戏内容。
+    -->
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/compose_top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
+
+    <!--
         模拟器画面区域。
         displayable_container 承载 MIDlet 的 SurfaceView，overlay_view 负责软键栏与 FPS 计数，
-        compose_controls 是最上层的控制层（顶部工具栏或沉浸模式的浮动菜单按钮）。
-        compose_controls 只占自身高度，不会遮挡画面其余部分的手势与点击。
+        compose_controls 是最上层的浮层（沉浸模式下的右上角菜单按钮）。
     -->
     <FrameLayout
         android:layout_width="match_parent"
@@ -34,7 +44,8 @@
             android:id="@+id/compose_controls"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="top" />
+            android:layout_gravity="top"
+            android:visibility="gone" />
 
     </FrameLayout>
 

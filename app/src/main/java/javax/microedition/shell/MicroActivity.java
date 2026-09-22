@@ -86,6 +86,9 @@ import com.kira.jarplay.BuildConfig;
 import com.kira.jarplay.R;
 import com.kira.jarplay.config.Config;
 import com.kira.jarplay.databinding.ActivityMicroBinding;
+import com.kira.jarplay.ui.MicroPlayCallbacks;
+import com.kira.jarplay.ui.MicroPlayScreenHelper;
+import com.kira.jarplay.ui.MicroPlayUiState;
 import com.kira.jarplay.util.Constants;
 import com.kira.jarplay.util.LogUtils;
 
@@ -185,13 +188,29 @@ public class MicroActivity extends AppCompatActivity {
 				}
 			}
 		};
-		MicroPlayScreenHelper.setControlsContent(
-				binding.composeControls,
-				playUiState,
-				appName == null ? getTitle().toString() : appName,
-				actionBarEnabled,
-				playCallbacks
-		);
+		// 播放页控制层：顶部工具栏占独立空间（不遮挡画面），沉浸模式才用浮动的菜单按钮
+		String playTitle = appName == null ? getTitle().toString() : appName;
+		if (actionBarEnabled) {
+			binding.composeControls.setVisibility(View.GONE);
+			binding.composeTopBar.setVisibility(View.VISIBLE);
+			MicroPlayScreenHelper.setControlsContent(
+					binding.composeTopBar,
+					playUiState,
+					playTitle,
+					true,
+					playCallbacks
+			);
+		} else {
+			binding.composeTopBar.setVisibility(View.GONE);
+			binding.composeControls.setVisibility(View.VISIBLE);
+			MicroPlayScreenHelper.setControlsContent(
+					binding.composeControls,
+					playUiState,
+					playTitle,
+					false,
+					playCallbacks
+			);
+		}
 
 		// 初始化 miuix 虚拟键盘
 		MicroPlayScreenHelper.setVirtualKeyboardContent(

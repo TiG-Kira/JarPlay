@@ -26,6 +26,7 @@ import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.PixelFormat;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
@@ -59,6 +60,7 @@ import java.util.concurrent.TimeUnit;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 import javax.microedition.lcdui.commands.AbstractSoftKeysBar;
+import javax.microedition.lcdui.ViewHandler;
 import javax.microedition.lcdui.event.CanvasEvent;
 import javax.microedition.lcdui.event.Event;
 import javax.microedition.lcdui.event.EventFilter;
@@ -162,6 +164,25 @@ public abstract class Canvas extends Displayable {
 	private boolean skipLeftSoft;
 	private boolean skipRightSoft;
 	private int[][] lastPointerPos = new int[20][2];
+
+	/**
+	 * 游戏实际绘制过的像素范围（帧缓冲坐标），用于把画面按“内容”而不是按整个画布来铺满。
+	 * <p>
+	 * 部分老游戏把分辨率硬编码在代码里（例如《仙剑奇侠传》只画 128x144），完全无视画布大小，
+	 * 于是画面只出现在画布左上角、其余区域永远是空白。这里累计记录 alpha 非 0 的像素范围
+	 * （{@link Image#createImage(int, int)} 生成的位图初始全透明，只要游戏画过就会写入
+	 * alpha），从而知道真正有内容的区域。
+	 */
+	private int contentLeft = Integer.MAX_VALUE;
+	private int contentTop = Integer.MAX_VALUE;
+	private int contentRight = -1;
+	private int contentBottom = -1;
+	private int[] contentScanBuffer;
+	private int contentScanTick;
+
+	/** 当前用于显示的内容区域（帧缓冲坐标）。缩放模式作用在这个区域上，而不是整个画布。 */
+	private int srcLeft, srcTop, srcWidth, srcHeight;
+	private final Rect srcRect = new Rect();
 
 	protected Canvas() {
 		this(forceFullscreen);
@@ -304,7 +325,7 @@ public abstract class Canvas extends Displayable {
 		g.clear(backgroundColor);
 		synchronized (bufferLock) {
 			offscreenCopy.getBitmap().prepareToDraw();
-			g.drawImage(offscreenCopy, virtualScreen);
+			g.drawImage(offscreenCopy, srcRect, virtualScreen);
 		}
 		if (fpsCounter != null) {
 			fpsCounter.increment();
@@ -326,7 +347,7 @@ public abstract class Canvas extends Displayable {
 				bitmap = Bitmap.createBitmap(onWidth, onHeight, Bitmap.Config.ARGB_8888);
 				canvasWrapper.bind(new android.graphics.Canvas(bitmap));
 				synchronized (bufferLock) {
-					canvasWrapper.drawImage(offscreenCopy, new RectF(0, 0, onWidth, onHeight));
+					canvasWrapper.drawImage(offscreenCopy, srcRect, new RectF(0, 0, onWidth, onHeight));
 				}
 			}
 			emitter.onSuccess(bitmap);
@@ -344,6 +365,8 @@ public abstract class Canvas extends Displayable {
 	 * Update the size and position of the virtual screen relative to the real one.
 	 */
 	public void updateSize() {
+		int previousWidth = width;
+		int previousHeight = height;
 		/*
 		 * We turn the sizes of the virtual screen into the sizes of the visible canvas.
 		 *
@@ -410,6 +433,37 @@ public abstract class Canvas extends Displayable {
 		}
 
 		/*
+		 * Determine which part of the framebuffer actually holds the MIDlet's picture.
+		 *
+		 * Some old games hard-code their resolution and draw into a corner of the canvas, so
+		 * scaling the whole canvas would leave large empty borders. When the painted area is
+		 * noticeably smaller than the canvas we scale that area instead, and the game fills
+		 * the display area no matter which resolution is configured.
+		 */
+		int contentW = contentRight - contentLeft + 1;
+		int contentH = contentBottom - contentTop + 1;
+		if (contentW <= 0 || contentH <= 0
+				|| (contentW >= width - 3 && contentH >= height - 3)) {
+			// nothing painted yet, or the picture already covers the whole canvas
+			srcLeft = 0;
+			srcTop = 0;
+			srcWidth = Math.max(1, width);
+			srcHeight = Math.max(1, height);
+		} else {
+			srcLeft = Math.max(0, contentLeft);
+			srcTop = Math.max(0, contentTop);
+			srcWidth = Math.min(contentW, width - srcLeft);
+			srcHeight = Math.min(contentH, height - srcTop);
+			if (srcWidth <= 0 || srcHeight <= 0) {
+				srcLeft = 0;
+				srcTop = 0;
+				srcWidth = Math.max(1, width);
+				srcHeight = Math.max(1, height);
+			}
+		}
+		srcRect.set(srcLeft, srcTop, srcLeft + srcWidth, srcTop + srcHeight);
+
+		/*
 		 * We turn the size of the canvas into the size of the image
 		 * that will be displayed on the screen of the device.
 		 */
@@ -421,8 +475,8 @@ public abstract class Canvas extends Displayable {
 		switch (scaleType) {
 			case 0:
 				// without scaling
-				onWidth = width;
-				onHeight = height;
+				onWidth = srcWidth;
+				onHeight = srcHeight;
 				break;
 			case 2:
 				// scaling without preserving the aspect ratio:
@@ -438,13 +492,13 @@ public abstract class Canvas extends Displayable {
 				// fit inside the display area while preserving the aspect ratio,
 				// scaling the picture up when possible
 				float fitScale = Math.min(
-						(float) displayWidth / width,
-						(float) scaledDisplayHeight / height);
+						(float) displayWidth / srcWidth,
+						(float) scaledDisplayHeight / srcHeight);
 				if (!(fitScale > 0f)) {
 					fitScale = 1f;
 				}
-				onWidth = Math.max(1, Math.round(width * fitScale));
-				onHeight = Math.max(1, Math.round(height * fitScale));
+				onWidth = Math.max(1, Math.round(srcWidth * fitScale));
+				onHeight = Math.max(1, Math.round(srcHeight * fitScale));
 				if (scaleRatio > 100) {
 					scaleRatio = 100;
 				}
@@ -490,13 +544,18 @@ public abstract class Canvas extends Displayable {
 		 */
 		float softBarHeight = softBar.bounds.height();
 		if (softBarHeight > 0) {
-			float scaleY = (float) onHeight / height;
+			float scaleY = (float) onHeight / srcHeight;
 			height = (int) (height - softBarHeight / scaleY);
 			onHeight -= softBarHeight;
 		}
 
 		RectF screen = new RectF(0, 0, displayWidth, displayHeight);
 		virtualScreen.set(onX, onY, onX + onWidth, onY + onHeight);
+
+		if (previousWidth != width || previousHeight != height) {
+			// 画布尺寸变了，之前记录的内容范围不再有效
+			resetContentBounds();
+		}
 
 		synchronized (bufferLock) {
 			if (offscreen == null) {
@@ -517,11 +576,94 @@ public abstract class Canvas extends Displayable {
 			float gt = 1.0f - 2.0f * virtualScreen.top / displayHeight;
 			float gr = 2.0f * virtualScreen.right / displayWidth - 1.0f;
 			float gb = 1.0f - 2.0f * virtualScreen.bottom / displayHeight;
-			float th = (float) height / offscreen.getBitmap().getHeight();
-			float tw = (float) width / offscreen.getBitmap().getWidth();
-			renderer.updateSize(gl, gt, gr, gb, th, tw);
+			Bitmap bitmap = offscreen.getBitmap();
+			float bw = Math.max(1, bitmap.getWidth());
+			float bh = Math.max(1, bitmap.getHeight());
+			float u0 = Math.min(1f, srcLeft / bw);
+			float v0 = Math.min(1f, srcTop / bh);
+			float u1 = Math.min(1f, (srcLeft + srcWidth) / bw);
+			float v1 = Math.min(1f, (srcTop + srcHeight) / bh);
+			renderer.updateSize(gl, gt, gr, gb, u0, v0, u1, v1);
 		}
 		repaintInternal();
+	}
+
+	/** 清空记录的内容范围（画布尺寸变化时调用）。 */
+	private void resetContentBounds() {
+		contentLeft = Integer.MAX_VALUE;
+		contentTop = Integer.MAX_VALUE;
+		contentRight = -1;
+		contentBottom = -1;
+		contentScanTick = 0;
+	}
+
+	/**
+	 * 记录 MIDlet 实际绘制过的像素范围。
+	 * <p>
+	 * 每帧扫描会有开销，因此低频抽样；一旦画面已经铺满画布就彻底停止扫描。
+	 * 注意范围只增不减：先出现一个小的启动 LOGO、之后再画满全屏的游戏也能被正确处理。
+	 */
+	private void updateContentBounds() {
+		if (contentLeft == 0 && contentTop == 0 && contentRight >= width && contentBottom >= height) {
+			return;	// 已经铺满画布，无需再扫描
+		}
+		int tick = contentScanTick++;
+		if (tick % 12 != 0) {
+			return;
+		}
+		int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, maxX = -1, maxY = -1;
+		synchronized (bufferLock) {
+			if (offscreen == null) {
+				return;
+			}
+			Bitmap bitmap = offscreen.getBitmap();
+			int bw = bitmap.getWidth();
+			int bh = bitmap.getHeight();
+			if (bw <= 0 || bh <= 0) {
+				return;
+			}
+			if (contentScanBuffer == null || contentScanBuffer.length < bw * bh) {
+				contentScanBuffer = new int[bw * bh];
+			}
+			bitmap.getPixels(contentScanBuffer, 0, bw, 0, 0, bw, bh);
+			int[] pixels = contentScanBuffer;
+			for (int y = 0; y < bh; y++) {
+				int rowStart = y * bw;
+				for (int x = 0; x < bw; x++) {
+					if ((pixels[rowStart + x] >>> 24) != 0) {
+						if (x < minX) minX = x;
+						if (x > maxX) maxX = x;
+						if (y < minY) minY = y;
+						if (y > maxY) maxY = y;
+					}
+				}
+			}
+		}
+		if (maxX < 0) {
+			return;
+		}
+		boolean changed = false;
+		if (minX < contentLeft) {
+			contentLeft = minX;
+			changed = true;
+		}
+		if (minY < contentTop) {
+			contentTop = minY;
+			changed = true;
+		}
+		if (maxX > contentRight) {
+			contentRight = maxX;
+			changed = true;
+		}
+		if (maxY > contentBottom) {
+			contentBottom = maxY;
+			changed = true;
+		}
+		if (changed && (contentRight - contentLeft + 1 != srcWidth
+				|| contentBottom - contentTop + 1 != srcHeight)) {
+			// 内容范围变了，重新计算显示区域
+			ViewHandler.postEvent(this::updateSize);
+		}
 	}
 
 	/**
@@ -531,7 +673,7 @@ public abstract class Canvas extends Displayable {
 	 * @return the corresponding pointer coordinate on the virtual screen
 	 */
 	private float convertPointerX(float x) {
-		return (x - onX) * width / onWidth;
+		return (x - onX) * srcWidth / onWidth + srcLeft;
 	}
 
 	/**
@@ -541,7 +683,7 @@ public abstract class Canvas extends Displayable {
 	 * @return the corresponding pointer coordinate on the virtual screen
 	 */
 	private float convertPointerY(float y) {
-		return (y - onY) * height / onHeight;
+		return (y - onY) * srcHeight / onHeight + srcTop;
 	}
 
 	@SuppressLint("ClickableViewAccessibility")
@@ -848,14 +990,18 @@ public abstract class Canvas extends Displayable {
 			glUniform1i(program.uTextureUnit, 0);
 		}
 
-		public void updateSize(float gl, float gt, float gr, float gb, float th, float tw) {
+		/**
+		 * @param u0,v0,u1,v1 纹理坐标范围，用于只取帧缓冲中有内容的那块子矩形
+		 */
+		public void updateSize(float gl, float gt, float gr, float gb,
+							   float u0, float v0, float u1, float v1) {
 			synchronized (vbo) {
 				FloatBuffer vertex_bg = vbo;
 				vertex_bg.rewind();
-				vertex_bg.put(gl).put(gt).put(0.0f).put(0.0f);// lt
-				vertex_bg.put(gl).put(gb).put(0.0f).put(  th);// lb
-				vertex_bg.put(gr).put(gt).put(  tw).put(0.0f);// rt
-				vertex_bg.put(gr).put(gb).put(  tw).put(  th);// rb
+				vertex_bg.put(gl).put(gt).put(u0).put(v0);// lt
+				vertex_bg.put(gl).put(gb).put(u0).put(v1);// lb
+				vertex_bg.put(gr).put(gt).put(u1).put(v0);// rt
+				vertex_bg.put(gr).put(gb).put(u1).put(v1);// rb
 			}
 			if (isStarted) {
 				mView.queueEvent(() -> {
@@ -947,6 +1093,7 @@ public abstract class Canvas extends Displayable {
 			} catch (Throwable e) {
 				Log.e(TAG, "Error in paint()", e);
 			}
+			updateContentBounds();
 			synchronized (bufferLock) {
 				offscreen.copyTo(offscreenCopy);
 			}
