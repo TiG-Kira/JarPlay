@@ -51,11 +51,13 @@ import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.AppCompatCheckBox;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.preference.PreferenceManager;
 
 import org.acra.ACRA;
@@ -102,6 +104,7 @@ public class MicroActivity extends AppCompatActivity {
 	private InputMethodManager inputMethodManager;
 	private int menuKey;
 	private String appPath;
+	private MicroPlayUiState playUiState;
 
 	public ActivityMicroBinding binding;
 
@@ -114,7 +117,9 @@ public class MicroActivity extends AppCompatActivity {
 		binding = ActivityMicroBinding.inflate(getLayoutInflater());
 		View view = binding.getRoot();
 		setContentView(view);
-		setSupportActionBar(binding.toolbar);
+
+		// 兼容手势导航/沉浸式：由我们自己分发 system bars 的显示与隐藏
+		WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
 		SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 		actionBarEnabled = sp.getBoolean(PREF_TOOLBAR, false);
@@ -128,6 +133,7 @@ public class MicroActivity extends AppCompatActivity {
 		}
 		ContextHolder.setVibration(sp.getBoolean(PREF_VIBRATION, true));
 		Canvas.setScreenshotRawMode(sp.getBoolean(PREF_SCREENSHOT_SWITCH, false));
+
 		Intent intent = getIntent();
 		if (BuildConfig.FULL_EMULATOR) {
 			appName = intent.getStringExtra(KEY_MIDLET_NAME);
@@ -145,6 +151,63 @@ public class MicroActivity extends AppCompatActivity {
 				throw new RuntimeException("Can't access file system");
 			}
 		}
+
+		// 初始化播放页控制层（顶部工具栏或沉浸模式的浮动菜单按钮）
+		playUiState = MicroPlayScreenHelper.createState();
+		MicroPlayCallbacks playCallbacks = new MicroPlayCallbacks() {
+			@Override
+			public void onClose() {
+				hideSoftInput();
+				MidletThread.destroyApp();
+			}
+
+			@Override
+			public void onOpenAppSettings() {
+				hideSoftInput();
+				Config.startApp(MicroActivity.this, appName, appPath, true);
+				MidletThread.destroyApp();
+			}
+
+			@Override
+			public void onScreenshot() {
+				takeScreenshot();
+			}
+
+			@Override
+			public void onToggleKeyboard() {
+				toggleVirtualKeyboard();
+			}
+
+			@Override
+			public void onSetFrameRateLimit(int fps) {
+				if (microLoader != null) {
+					microLoader.setLimitFps(fps);
+				}
+			}
+		};
+		MicroPlayScreenHelper.setControlsContent(
+				binding.composeControls,
+				playUiState,
+				appName == null ? getTitle().toString() : appName,
+				actionBarEnabled,
+				playCallbacks
+		);
+
+		// 初始化 miuix 虚拟键盘
+		MicroPlayScreenHelper.setVirtualKeyboardContent(
+				binding.composeVirtualButtons,
+				playUiState
+		);
+
+		// 监听displayable_container的尺寸变化，动态更新屏幕尺寸
+		binding.displayableContainer.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+			int width = binding.displayableContainer.getWidth();
+			int height = binding.displayableContainer.getHeight();
+			if (width > 0 && height > 0) {
+				ContextHolder.setDisplaySize(width, height);
+			}
+		});
+
 		String arguments = intent.getStringExtra(KEY_START_ARGUMENTS);
 		if (arguments != null) {
 			MidletSystem.setProperty("com.nokia.mid.cmdline", arguments);
@@ -171,11 +234,22 @@ public class MicroActivity extends AppCompatActivity {
 			return;
 		}
 		microLoader.applyConfiguration();
+
+		// 让画面区域的外层背景与模拟器背景保持一致，避免出现纯黑的“黑边”
+		boolean blackBackground = PreferenceManager
+				.getDefaultSharedPreferences(getApplicationContext())
+				.getBoolean(PREF_BLACK_BACKGROUND, false);
+		int background = blackBackground ? 0xFF000000 : (microLoader.getBackgroundColor() | 0xFF000000);
+		binding.midletFrame.setBackgroundColor(background);
+		binding.displayableContainer.setBackgroundColor(background);
+		if (playUiState != null) {
+			playUiState.setFrameRateLimit(microLoader.getFpsLimit());
+			playUiState.setKeyboardVisible(microLoader.isShowKeyboard());
+		}
+
 		VirtualKeyboard vk = ContextHolder.getVk();
 		int orientation = microLoader.getOrientation();
 		if (vk != null) {
-			vk.setView(binding.overlayView);
-			binding.overlayView.addLayer(vk);
 			if (vk.isPhone()) {
 				orientation = ORIENTATION_PORTRAIT;
 			}
@@ -307,25 +381,21 @@ public class MicroActivity extends AppCompatActivity {
 	}
 
 	private void hideSystemUI() {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-			int flags = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
-			if (!statusBarEnabled) {
-				flags |= View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-						| View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_FULLSCREEN;
-			}
-			getWindow().getDecorView().setSystemUiVisibility(flags);
-		} else if (!statusBarEnabled) {
-			getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-					WindowManager.LayoutParams.FLAG_FULLSCREEN);
+		WindowInsetsControllerCompat controller =
+				WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+		controller.setSystemBarsBehavior(
+				WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+		if (statusBarEnabled) {
+			controller.hide(WindowInsetsCompat.Type.navigationBars());
+		} else {
+			controller.hide(WindowInsetsCompat.Type.systemBars());
 		}
 	}
 
 	private void showSystemUI() {
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-			getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
-		} else {
-			getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
-		}
+		WindowInsetsControllerCompat controller =
+				WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+		controller.show(WindowInsetsCompat.Type.systemBars());
 	}
 
 	public void setCurrent(Displayable displayable) {
@@ -341,21 +411,41 @@ public class MicroActivity extends AppCompatActivity {
 		return visible;
 	}
 
+	/**
+	 * 请求结束当前 MIDlet：交给播放页的 miuix 弹窗做二次确认。
+	 */
 	public void showExitConfirmation() {
-		AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
-		alertBuilder.setTitle(R.string.CONFIRMATION_REQUIRED)
-				.setMessage(R.string.FORCE_CLOSE_CONFIRMATION)
-				.setPositiveButton(android.R.string.ok, (d, w) -> {
-					hideSoftInput();
-					MidletThread.destroyApp();
-				})
-				.setNeutralButton(R.string.action_settings, (d, w) -> {
-					hideSoftInput();
-					Config.startApp(this, appName, appPath, true);
-					MidletThread.destroyApp();
-				})
-				.setNegativeButton(android.R.string.cancel, null);
-		alertBuilder.create().show();
+		if (playUiState != null) {
+			playUiState.setShowExitDialog(true);
+		}
+	}
+
+	public void toggleVirtualKeyboard() {
+		if (playUiState != null) {
+			playUiState.setKeyboardVisible(!playUiState.getKeyboardVisible());
+		}
+	}
+
+	public void takeScreenshot() {
+		if (current instanceof Canvas) {
+			microLoader.takeScreenshot((Canvas) current, new io.reactivex.SingleObserver<String>() {
+				@Override
+				public void onSubscribe(io.reactivex.disposables.Disposable d) {
+				}
+
+				@Override
+				public void onSuccess(String s) {
+					android.widget.Toast.makeText(MicroActivity.this, getString(R.string.screenshot_saved)
+							+ " " + s, android.widget.Toast.LENGTH_LONG).show();
+				}
+
+				@Override
+				public void onError(Throwable e) {
+					e.printStackTrace();
+					android.widget.Toast.makeText(MicroActivity.this, R.string.error, android.widget.Toast.LENGTH_SHORT).show();
+				}
+			});
+		}
 	}
 
 	@Override
@@ -374,15 +464,6 @@ public class MicroActivity extends AppCompatActivity {
 				return onKeyUp(event.getKeyCode(), event);
 			}
 		return super.dispatchKeyEvent(event);
-	}
-
-	@Override
-	public void openOptionsMenu() {
-		if (!actionBarEnabled &&
-				Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT && current instanceof Canvas) {
-			showSystemUI();
-		}
-		super.openOptionsMenu();
 	}
 
 	@Override
@@ -406,7 +487,8 @@ public class MicroActivity extends AppCompatActivity {
 	public boolean onKeyUp(int keyCode, KeyEvent event) {
 		if ((keyCode == menuKey || keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_MENU)
 				&& (event.getFlags() & (KeyEvent.FLAG_LONG_PRESS | KeyEvent.FLAG_CANCELED)) == 0) {
-			openOptionsMenu();
+			// 菜单键 / 返回键弹出播放页操作面板（沉浸模式下工具栏被隐藏时的唯一入口）
+			showExitConfirmation();
 			return true;
 		}
 		return super.onKeyUp(keyCode, event);
@@ -415,219 +497,6 @@ public class MicroActivity extends AppCompatActivity {
 	@Override
 	public void onBackPressed() {
 		// Intentionally overridden by empty due to support for back-key remapping.
-	}
-
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		MenuInflater inflater = getMenuInflater();
-		inflater.inflate(R.menu.midlet_displayable, menu);
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-			menu.findItem(R.id.action_lock_orientation).setVisible(true);
-		}
-		if (actionBarEnabled) {
-			menu.findItem(R.id.action_ime_keyboard).setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
-			menu.findItem(R.id.action_take_screenshot).setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
-		}
-		if (inputMethodManager == null) {
-			menu.findItem(R.id.action_ime_keyboard).setVisible(false);
-		}
-		if (ContextHolder.getVk() == null) {
-			menu.findItem(R.id.action_submenu_vk).setVisible(false);
-		}
-		return true;
-	}
-
-	@Override
-	public boolean onPrepareOptionsMenu(Menu menu) {
-		if (current instanceof Canvas) {
-			menu.setGroupVisible(R.id.action_group_canvas, true);
-			VirtualKeyboard vk = ContextHolder.getVk();
-			if (vk != null) {
-				boolean visible = vk.getLayoutEditMode() != VirtualKeyboard.LAYOUT_EOF;
-				menu.findItem(R.id.action_layout_edit_finish).setVisible(visible);
-			}
-		} else {
-			menu.setGroupVisible(R.id.action_group_canvas, false);
-		}
-		return true;
-	}
-
-	@Override
-	public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-		int id = item.getItemId();
-		if (id == R.id.action_exit_midlet) {
-			showExitConfirmation();
-		} else if (id == R.id.action_save_log) {
-			saveLog();
-		} else if (id == R.id.action_lock_orientation) {
-			if (item.isChecked()) {
-				VirtualKeyboard vk = ContextHolder.getVk();
-				int orientation = vk != null && vk.isPhone() ? ORIENTATION_PORTRAIT : microLoader.getOrientation();
-				setOrientation(orientation);
-				item.setChecked(false);
-			} else {
-				item.setChecked(true);
-				setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
-			}
-		} else if (id == R.id.action_ime_keyboard) {
-			inputMethodManager.toggleSoftInputFromWindow(binding.displayableContainer.getWindowToken(),
-					InputMethodManager.SHOW_FORCED, 0);
-		} else if (id == R.id.action_take_screenshot) {
-			takeScreenshot();
-		} else if (id == R.id.action_limit_fps) {
-			showLimitFpsDialog();
-		} else if (ContextHolder.getVk() != null) {
-			// Handled only when virtual keyboard is enabled
-			handleVkOptions(id);
-		}
-		return true;
-	}
-
-	private void handleVkOptions(int id) {
-		VirtualKeyboard vk = ContextHolder.getVk();
-		if (id == R.id.action_layout_edit_mode) {
-			vk.setLayoutEditMode(VirtualKeyboard.LAYOUT_KEYS);
-			Toast.makeText(this, R.string.layout_edit_mode, Toast.LENGTH_SHORT).show();
-		} else if (id == R.id.action_layout_scale_mode) {
-			vk.setLayoutEditMode(VirtualKeyboard.LAYOUT_SCALES);
-			Toast.makeText(this, R.string.layout_scale_mode, Toast.LENGTH_SHORT).show();
-		} else if (id == R.id.action_layout_edit_finish) {
-			vk.setLayoutEditMode(VirtualKeyboard.LAYOUT_EOF);
-			Toast.makeText(this, R.string.layout_edit_finished, Toast.LENGTH_SHORT).show();
-			showSaveVkAlert(false);
-		} else if (id == R.id.action_layout_switch) {
-			showSetLayoutDialog();
-		} else if (id == R.id.action_hide_buttons) {
-			showHideButtonDialog();
-		}
-	}
-
-	@SuppressLint("CheckResult")
-	private void takeScreenshot() {
-		microLoader.takeScreenshot((Canvas) current, new SingleObserver<String>() {
-			@Override
-			public void onSubscribe(@NonNull Disposable d) {
-			}
-
-			@Override
-			public void onSuccess(@NonNull String s) {
-				Toast.makeText(MicroActivity.this, getString(R.string.screenshot_saved)
-						+ " " + s, Toast.LENGTH_LONG).show();
-			}
-
-			@Override
-			public void onError(@NonNull Throwable e) {
-				e.printStackTrace();
-				Toast.makeText(MicroActivity.this, R.string.error, Toast.LENGTH_SHORT).show();
-			}
-		});
-	}
-
-	private void saveLog() {
-		try {
-			LogUtils.writeLog();
-			Toast.makeText(this, R.string.log_saved, Toast.LENGTH_SHORT).show();
-		} catch (IOException e) {
-			e.printStackTrace();
-			Toast.makeText(this, R.string.error, Toast.LENGTH_SHORT).show();
-		}
-	}
-
-	private void showHideButtonDialog() {
-		final VirtualKeyboard vk = ContextHolder.getVk();
-		boolean[] states = vk.getKeysVisibility();
-		boolean[] changed = states.clone();
-		new AlertDialog.Builder(this)
-				.setTitle(R.string.hide_buttons)
-				.setMultiChoiceItems(vk.getKeyNames(), changed, (dialog, which, isChecked) -> {})
-				.setPositiveButton(android.R.string.ok, (dialog, which) -> {
-					if (!Arrays.equals(states, changed)) {
-						vk.setKeysVisibility(changed);
-						showSaveVkAlert(true);
-					}
-				}).show();
-	}
-
-	private void showSaveVkAlert(boolean keepScreenPreferred) {
-		AlertDialog.Builder builder = new AlertDialog.Builder(this);
-		builder.setTitle(R.string.CONFIRMATION_REQUIRED);
-		builder.setMessage(R.string.pref_vk_save_alert);
-		builder.setNegativeButton(android.R.string.no, null);
-		AlertDialog dialog = builder.create();
-
-		final VirtualKeyboard vk = ContextHolder.getVk();
-		if (vk.isPhone()) {
-			AppCompatCheckBox cb = new AppCompatCheckBox(this);
-			cb.setText(R.string.opt_save_screen_params);
-			cb.setChecked(keepScreenPreferred);
-
-			TypedValue out = new TypedValue();
-			getTheme().resolveAttribute(androidx.appcompat.R.attr.dialogPreferredPadding, out, true);
-			int paddingH = getResources().getDimensionPixelOffset(out.resourceId);
-			int paddingT = getResources().getDimensionPixelOffset(androidx.appcompat.R.dimen.abc_dialog_padding_top_material);
-			dialog.setView(cb, paddingH, paddingT, paddingH, 0);
-
-			dialog.setButton(dialog.BUTTON_POSITIVE, getText(android.R.string.yes), (d, w) -> {
-				if (cb.isChecked()) {
-					vk.saveScreenParams();
-				}
-				vk.onLayoutChanged(VirtualKeyboard.TYPE_CUSTOM);
-			});
-		} else {
-			dialog.setButton(dialog.BUTTON_POSITIVE, getText(android.R.string.yes), (d, w) ->
-					ContextHolder.getVk().onLayoutChanged(VirtualKeyboard.TYPE_CUSTOM));
-		}
-		dialog.show();
-	}
-
-	private void showSetLayoutDialog() {
-		final VirtualKeyboard vk = ContextHolder.getVk();
-		AlertDialog.Builder builder = new AlertDialog.Builder(this)
-				.setTitle(R.string.layout_switch)
-				.setSingleChoiceItems(R.array.PREF_VK_TYPE_ENTRIES, vk.getLayout(), null)
-				.setPositiveButton(android.R.string.ok, (d, w) -> {
-					vk.setLayout(((AlertDialog) d).getListView().getCheckedItemPosition());
-					if (vk.isPhone()) {
-						setOrientation(ORIENTATION_PORTRAIT);
-					} else {
-						setOrientation(microLoader.getOrientation());
-					}
-				});
-		builder.show();
-	}
-
-	private void showLimitFpsDialog() {
-		EditText editText = new EditText(this);
-		editText.setHint(R.string.unlimited);
-		editText.setInputType(InputType.TYPE_CLASS_NUMBER);
-		editText.setKeyListener(DigitsKeyListener.getInstance("0123456789"));
-		editText.setMaxLines(1);
-		editText.setSingleLine(true);
-		float density = getResources().getDisplayMetrics().density;
-		LinearLayout linearLayout = new LinearLayout(this);
-		LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-				ViewGroup.LayoutParams.WRAP_CONTENT);
-		int margin = (int) (density * 20);
-		params.setMargins(margin, 0, margin, 0);
-		linearLayout.addView(editText, params);
-		int paddingVertical = (int) (density * 16);
-		int paddingHorizontal = (int) (density * 8);
-		editText.setPadding(paddingHorizontal, paddingVertical, paddingHorizontal, paddingVertical);
-		new AlertDialog.Builder(this)
-				.setTitle(R.string.PREF_LIMIT_FPS)
-				.setView(linearLayout)
-				.setPositiveButton(android.R.string.ok, (d, w) -> {
-					Editable text = editText.getText();
-					int fps = 0;
-					try {
-						fps = TextUtils.isEmpty(text) ? 0 : Integer.parseInt(text.toString().trim());
-					} catch (NumberFormatException ignored) {
-					}
-					microLoader.setLimitFps(fps);
-				})
-				.setNegativeButton(android.R.string.cancel, null)
-				.setNeutralButton(R.string.reset, ((d, which) -> microLoader.setLimitFps(-1)))
-				.show();
 	}
 
 	@Override
@@ -670,29 +539,13 @@ public class MicroActivity extends AppCompatActivity {
 				return;
 			}
 			binding.displayableContainer.removeAllViews();
-			ActionBar actionBar = Objects.requireNonNull(getSupportActionBar());
-			LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) binding.toolbar.getLayoutParams();
-			int toolbarHeight = 0;
+
 			if (next instanceof Canvas) {
 				hideSystemUI();
-				if (!actionBarEnabled) {
-					actionBar.hide();
-				} else {
-					final String title = next.getTitle();
-					actionBar.setTitle(title == null ? appName : title);
-					toolbarHeight = (int) (getToolBarHeight() / 1.5);
-					layoutParams.height = toolbarHeight;
-				}
 			} else {
 				showSystemUI();
-				actionBar.show();
-				final String title = next != null ? next.getTitle() : null;
-				actionBar.setTitle(title == null ? appName : title);
-				toolbarHeight = getToolBarHeight();
-				layoutParams.height = toolbarHeight;
 			}
-			binding.overlayView.setLocation(0, toolbarHeight);
-			binding.toolbar.setLayoutParams(layoutParams);
+
 			invalidateOptionsMenu();
 			if (next != null) {
 				binding.displayableContainer.addView(next.getDisplayableView());

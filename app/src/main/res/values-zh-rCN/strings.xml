@@ -47,7 +47,8 @@
     <string name="reinstall">应用已经安装。\n\n 您想要重新安装吗？\n 所有数据将被保存。</string>
     <string name="reinstall_newest">更新此应用到版本 %1$s？\n\n目前已安装版本： %2$s\n所有数据将被保存。</string>
     <string name="reinstall_older">将此应用替换为旧版本 %1$s 吗？\n\n 目前已安装： %2$s\n 旧版本可能无法正常使用现有的存档数据。</string>
-    <string name="loading_info">加载信息中…</string>
+    <string name="loading_info">J2ME 安装器</string>
+    <string name="installer_title">J2ME 安装器</string>
     <string name="START_CMD">启动</string>
     <string name="CANCEL_CMD">取消</string>
     <string name="CLEAR_DATA_CMD">清除数据</string>
@@ -257,4 +258,44 @@
     <string name="help_tips_content">• 你可以在设置中自定义屏幕方向、着色器滤镜等\n• 虚拟键盘可以在屏幕设置中启用\n• 点击应用列表上的 + 按钮安装新的 J2ME 应用\n• 长按应用可以编辑、删除或配置\n• 使用配置文件保存喜爱的模拟器设置</string>
     <string name="help_faq_title">常见问题</string>
     <string name="help_faq_content">如果游戏运行缓慢，请尝试禁用图像过滤或降低帧率限制。\n如果画面闪烁，请在屏幕设置中启用“立即处理模式”。\n对于全屏游戏，请启用“强制全屏”选项。</string>
+    <!-- Playback page -->
+    <string name="play_toggle_keyboard">显示或隐藏虚拟键盘</string>
+    <string name="play_edit_layout">编辑按键布局</string>
+    <string name="play_edit_layout_summary">点选两个按键即可交换位置</string>
+    <string name="play_keyboard">虚拟键盘</string>
+    <string name="play_keyboard_shown">当前显示</string>
+    <string name="play_keyboard_hidden">当前隐藏</string>
+    <string name="play_frame_rate">限制帧率</string>
+    <string name="play_frame_rate_value">%1$d FPS</string>
+    <string name="play_frame_rate_follow">跟随应用配置</string>
+    <string name="play_frame_rate_none">不限制</string>
+    <string name="play_frame_rate_summary">留空表示不限帧，建议填写 30 或 60。</string>
+    <string name="play_frame_rate_unit">FPS</string>
+    <string name="play_layout_hint">先点一个按键，再点另一个即可交换</string>
+    <string name="play_exit">退出应用</string>
+    <string name="play_exit_confirm">结束运行</string>
+    <string name="cancel_action">取消</string>
+
+    <!-- App list -->
+    <string name="app_launch">启动</string>
+    <string name="app_configure">应用设置</string>
+    <string name="app_delete_confirm">确定要删除该应用及其数据吗？</string>
+
+    <!-- Config page -->
+    <string name="config_loading">正在读取设置…</string>
+    <string name="pref_screen_scale_type_summary">不缩放＝按原始像素显示；等比缩放＝保持比例放大；拉伸铺满＝撑满整个显示区域。</string>
+    <string name="pref_screen_gravity_summary">当画面没有铺满显示区域时，模拟器画面的停靠位置。</string>
+    <string name="swap_resolution">交换宽高</string>
+
+    <!-- Screen settings -->
+    <string name="pref_toolbar_title">显示顶部工具栏</string>
+    <string name="pref_toolbar_summary">关闭后以沉浸模式游玩，可通过浮动按钮或返回键打开菜单。</string>
+    <string name="pref_enable_statusbar_summary">游玩时保持状态栏显示。</string>
+    <string name="pref_add_cutout_area_title">适配刘海/挖孔区域</string>
+    <string name="pref_add_cutout_area_summary">允许画面延伸到刘海或挖孔区域。</string>
+    <string name="pref_wakelock_summary">游玩期间防止屏幕自动关闭。</string>
+    <string name="pref_black_background_title">黑色背景</string>
+    <string name="pref_black_background_summary">适合深色主题</string>
+    <string name="pref_category_behavior">行为</string>
+    <string name="pref_vibration_summary">当 J2ME 应用请求振动时触发。</string>
 </resources>

@@ -128,11 +128,11 @@ public abstract class Canvas extends Displayable {
 	private static boolean forceFullscreen;
 	private static boolean showFps;
 	private static int backgroundColor;
-	private static int scaleRatio;
+	private static int scaleRatio = 100;
 	private static int fpsLimit;
 	private static boolean screenshotRawMode;
-	private static int scaleType;
-	private static int screenGravity;
+	private static int scaleType = 1;
+	private static int screenGravity = 2;
 
 	private final Object bufferLock = new Object();
 	private final Object surfaceLock = new Object();
@@ -351,6 +351,18 @@ public abstract class Canvas extends Displayable {
 		 * than zero, which means auto-selection of this size so that the resulting canvas
 		 * has the same aspect ratio as the actual screen of the device.
 		 */
+		if (displayWidth <= 0 || displayHeight <= 0) {
+			// 显示区域尺寸未知时（例如布局尚未完成）回退到设备参数，避免出现除零与零尺寸画面。
+			displayWidth = ContextHolder.getDisplayWidth();
+			displayHeight = ContextHolder.getDisplayHeight();
+			if (displayWidth <= 0) {
+				displayWidth = Math.max(virtualWidth, 1);
+			}
+			if (displayHeight <= 0) {
+				displayHeight = Math.max(virtualHeight, 1);
+			}
+		}
+
 		int scaledDisplayHeight;
 		VirtualKeyboard vk = ContextHolder.getVk();
 		boolean isPhoneSkin = vk != null && vk.isPhone();
@@ -360,6 +372,9 @@ public abstract class Canvas extends Displayable {
 			float vkHeight = vk.getPhoneKeyboardHeight(displayWidth, displayHeight);
 			scaledDisplayHeight = (int) (displayHeight - vkHeight - 1);
 		} else {
+			scaledDisplayHeight = displayHeight;
+		}
+		if (scaledDisplayHeight <= 0) {
 			scaledDisplayHeight = displayHeight;
 		}
 		if (virtualWidth > 0) {
@@ -375,7 +390,7 @@ public abstract class Canvas extends Displayable {
 				 * height is selected by the ratio of the real screen
 				 */
 				width = virtualWidth;
-				height = scaledDisplayHeight * virtualWidth / displayWidth;
+				height = Math.max(1, scaledDisplayHeight * virtualWidth / displayWidth);
 			}
 		} else {
 			if (virtualHeight > 0) {
@@ -383,7 +398,7 @@ public abstract class Canvas extends Displayable {
 				 * only the canvas height is set
 				 * width is selected by the ratio of the real screen
 				 */
-				width = displayWidth * virtualHeight / scaledDisplayHeight;
+				width = Math.max(1, displayWidth * virtualHeight / scaledDisplayHeight);
 				height = virtualHeight;
 			} else {
 				/*
@@ -399,24 +414,15 @@ public abstract class Canvas extends Displayable {
 		 * that will be displayed on the screen of the device.
 		 */
 		int scaleRatio = Canvas.scaleRatio;
+		if (scaleRatio <= 0) {
+			// 配置损坏（例如被写成 0）时曾导致整个画面被压缩成 0 像素，这里兜底成 100%。
+			scaleRatio = 100;
+		}
 		switch (scaleType) {
 			case 0:
 				// without scaling
 				onWidth = width;
 				onHeight = height;
-				break;
-			case 1:
-				// try to fit in width
-				onWidth = displayWidth;
-				onHeight = height * displayWidth / width;
-				if (onHeight > scaledDisplayHeight) {
-					// if height is too big, then fit in height
-					onHeight = scaledDisplayHeight;
-					onWidth = width * scaledDisplayHeight / height;
-				}
-				if (scaleRatio > 100) {
-					scaleRatio = 100;
-				}
 				break;
 			case 2:
 				// scaling without preserving the aspect ratio:
@@ -427,10 +433,26 @@ public abstract class Canvas extends Displayable {
 					scaleRatio = 100;
 				}
 				break;
+			case 1:
+			default:
+				// fit inside the display area while preserving the aspect ratio,
+				// scaling the picture up when possible
+				float fitScale = Math.min(
+						(float) displayWidth / width,
+						(float) scaledDisplayHeight / height);
+				if (!(fitScale > 0f)) {
+					fitScale = 1f;
+				}
+				onWidth = Math.max(1, Math.round(width * fitScale));
+				onHeight = Math.max(1, Math.round(height * fitScale));
+				if (scaleRatio > 100) {
+					scaleRatio = 100;
+				}
+				break;
 		}
 
-		onWidth = onWidth * scaleRatio / 100;
-		onHeight = onHeight * scaleRatio / 100;
+		onWidth = Math.max(1, onWidth * scaleRatio / 100);
+		onHeight = Math.max(1, onHeight * scaleRatio / 100);
 
 		switch (Canvas.screenGravity) {
 			case 0: // left
@@ -441,10 +463,6 @@ public abstract class Canvas extends Displayable {
 				onX = (displayWidth - onWidth) / 2;
 				onY = 0;
 				break;
-			case 2: // center
-				onX = (displayWidth - onWidth) / 2;
-				onY = (scaledDisplayHeight - onHeight) / 2;
-				break;
 			case 3: // right
 				onX = displayWidth - onWidth;
 				onY = (scaledDisplayHeight - onHeight) / 2;
@@ -452,6 +470,11 @@ public abstract class Canvas extends Displayable {
 			case 4: // bottom
 				onX = (displayWidth - onWidth) / 2;
 				onY = scaledDisplayHeight - onHeight;
+				break;
+			case 2: // center
+			default:
+				onX = (displayWidth - onWidth) / 2;
+				onY = (scaledDisplayHeight - onHeight) / 2;
 				break;
 		}
 

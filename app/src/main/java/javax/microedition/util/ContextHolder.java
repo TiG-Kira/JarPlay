@@ -23,6 +23,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Process;
 import android.os.Vibrator;
+import android.util.DisplayMetrics;
 import android.view.Display;
 import android.view.WindowManager;
 
@@ -57,6 +58,9 @@ public class ContextHolder {
 	private static Context appContext;
 	private static final ArrayList<ActivityResultListener> resultListeners = new ArrayList<>();
 	private static boolean vibrationEnabled;
+	private static int displayWidth;
+	private static int displayHeight;
+	private static boolean displaySizeInitialized;
 
 	public static Context getAppContext() {
 		return appContext;
@@ -77,12 +81,34 @@ public class ContextHolder {
 		return display;
 	}
 
+	public static void setDisplaySize(int width, int height) {
+		displayWidth = width;
+		displayHeight = height;
+		displaySizeInitialized = true;
+	}
+
 	public static int getDisplayWidth() {
-		return getDisplay().getWidth();
+		if (!displaySizeInitialized) {
+			displaySizeInitialized = true;
+			Context context = getAppContext();
+			if (context != null) {
+				WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+				if (wm != null) {
+					DisplayMetrics metrics = new DisplayMetrics();
+					wm.getDefaultDisplay().getMetrics(metrics);
+					displayWidth = metrics.widthPixels;
+					displayHeight = metrics.heightPixels;
+				}
+			}
+		}
+		return displayWidth;
 	}
 
 	public static int getDisplayHeight() {
-		return getDisplay().getHeight();
+		if (!displaySizeInitialized) {
+			getDisplayWidth();
+		}
+		return displayHeight;
 	}
 
 	public static void setCurrentActivity(MicroActivity activity) {

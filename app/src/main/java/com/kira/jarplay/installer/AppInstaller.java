@@ -490,4 +490,8 @@ public class AppInstaller {
 	public AppItem getExistsApp() {
 		return currentApp;
 	}
+
+	public Uri getUri() {
+		return uri;
+	}
 }

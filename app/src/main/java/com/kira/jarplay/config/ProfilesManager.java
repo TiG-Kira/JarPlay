@@ -153,18 +153,34 @@ public class ProfilesManager {
 
 			case 2:
 				if (params.screenScaleToFit) {
-					if (params.screenKeepAspectRatio) {
-						params.screenScaleType = 1;
-					} else {
-						params.screenScaleType = 2;
-					}
+					params.screenScaleType = params.screenKeepAspectRatio
+							? ProfileModel.SCALE_TYPE_FIT
+							: ProfileModel.SCALE_TYPE_FILL;
 				} else {
-					params.screenScaleType = 0;
+					// 旧版的“不缩放”会把虚拟屏幕按 1:1 画在左上角，
+					// 现在统一改成等比缩放。
+					params.screenScaleType = ProfileModel.SCALE_TYPE_FIT;
 				}
-				params.screenGravity = 1;
+				params.screenGravity = ProfileModel.GRAVITY_CENTER;
+				params.version = 3;
 
+			case 3:
+				// v3 的配置由早期 Compose 配置页写入，缺失字段会残留 0：
+				// ScreenScaleType=0 导致画面按原始分辨率显示在角落，
+				// ScreenBackgroundColor=0 导致背景纯黑。这里统一修复一次。
+				if (params.screenScaleType == ProfileModel.SCALE_TYPE_NONE) {
+					params.screenScaleType = ProfileModel.SCALE_TYPE_FILL;
+				}
+				if (params.screenBackgroundColor == 0) {
+					params.screenBackgroundColor = ProfileModel.DEFAULT_BACKGROUND_COLOR;
+				}
 				params.version = ProfileModel.VERSION;
-				ProfilesManager.saveConfig(params);
+				params.normalize();
+				saveConfig(params);
+				break;
+
+			default:
+				params.normalize();
 				break;
 		}
 		return params;

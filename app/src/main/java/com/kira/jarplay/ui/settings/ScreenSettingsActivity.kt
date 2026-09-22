@@ -1,5 +1,6 @@
 package com.kira.jarplay.ui.settings
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -10,24 +11,29 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.preference.PreferenceManager
 import com.kira.jarplay.R
 import com.kira.jarplay.ui.theme.JarPlayTheme
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import com.kira.jarplay.util.Constants
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 
 class ScreenSettingsActivity : ComponentActivity() {
@@ -44,31 +50,28 @@ class ScreenSettingsActivity : ComponentActivity() {
 @Composable
 fun ScreenSettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    val preferences = remember {
-        androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+    val preferences = remember(context) {
+        PreferenceManager.getDefaultSharedPreferences(context)
     }
+    val scrollBehavior = MiuixScrollBehavior()
 
-    var showFPS by remember {
-        mutableStateOf(preferences.getBoolean("pref_show_fps", false))
-    }
-    var forceFullscreen by remember {
-        mutableStateOf(preferences.getBoolean("pref_force_fullscreen", true))
-    }
-    var immediateProcessing by remember {
-        mutableStateOf(preferences.getBoolean("pref_immediate", false))
-    }
-    var limitFPS by remember {
-        mutableStateOf(preferences.getBoolean("pref_limit_fps", false))
+    // 让页面上的开关始终与 SharedPreferences 保持一致
+    var revision by remember { mutableIntStateOf(0) }
+    DisposableEffect(preferences) {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> revision++ }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = stringResource(R.string.pref_screen_settings),
+                scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = MiuixIcons.Back,
                             contentDescription = stringResource(R.string.close)
                         )
                     }
@@ -79,65 +82,106 @@ fun ScreenSettingsScreen(onBack: () -> Unit) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
+            contentPadding = PaddingValues(
+                top = innerPadding.calculateTopPadding() + 8.dp,
+                bottom = innerPadding.calculateBottomPadding() + 16.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             item {
                 SmallTitle(text = stringResource(R.string.pref_category_display))
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
-                ) {
-                    SwitchPreference(
-                        title = stringResource(R.string.PREF_SHOW_FPS),
-                        summary = stringResource(R.string.PREF_SHOW_FPS_SUMMARY),
-                        checked = showFPS,
-                        onCheckedChange = {
-                            showFPS = it
-                            preferences.edit().putBoolean("pref_show_fps", it).apply()
-                        }
+                SettingsGroup {
+                    DisplaySwitch(
+                        preferences = preferences,
+                        revision = revision,
+                        key = Constants.PREF_TOOLBAR,
+                        titleRes = R.string.pref_toolbar_title,
+                        summaryRes = R.string.pref_toolbar_summary,
                     )
-                    SwitchPreference(
-                        title = stringResource(R.string.PREF_FORCE_FULLSCREEN),
-                        summary = stringResource(R.string.PREF_FORCE_FULLSCREEN_SUMMARY),
-                        checked = forceFullscreen,
-                        onCheckedChange = {
-                            forceFullscreen = it
-                            preferences.edit().putBoolean("pref_force_fullscreen", it).apply()
-                        }
+                    DisplaySwitch(
+                        preferences = preferences,
+                        revision = revision,
+                        key = Constants.PREF_STATUSBAR,
+                        titleRes = R.string.pref_enable_statusbar_title,
+                        summaryRes = R.string.pref_enable_statusbar_summary,
+                    )
+                    DisplaySwitch(
+                        preferences = preferences,
+                        revision = revision,
+                        key = Constants.PREF_ADD_CUTOUT_AREA,
+                        titleRes = R.string.pref_add_cutout_area_title,
+                        summaryRes = R.string.pref_add_cutout_area_summary,
+                    )                    DisplaySwitch(
+                        preferences = preferences,
+                        revision = revision,
+                        key = Constants.PREF_BLACK_BACKGROUND,
+                        titleRes = R.string.pref_black_background_title,
+                        summaryRes = R.string.pref_black_background_summary,
                     )
                 }
             }
 
             item {
-                SmallTitle(text = stringResource(R.string.pref_category_performance))
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp)
-                ) {
-                    SwitchPreference(
-                        title = stringResource(R.string.PREF_IMMEDIATE),
-                        summary = stringResource(R.string.PREF_IMMEDIATE_SUMMARY),
-                        checked = immediateProcessing,
-                        onCheckedChange = {
-                            immediateProcessing = it
-                            preferences.edit().putBoolean("pref_immediate", it).apply()
-                        }
+                SmallTitle(text = stringResource(R.string.pref_category_behavior))
+                SettingsGroup {
+                    DisplaySwitch(
+                        preferences = preferences,
+                        revision = revision,
+                        key = Constants.PREF_KEEP_SCREEN,
+                        titleRes = R.string.pref_wakelock_title,
+                        summaryRes = R.string.pref_wakelock_summary,
                     )
-                    SwitchPreference(
-                        title = stringResource(R.string.PREF_LIMIT_FPS),
-                        summary = stringResource(R.string.PREF_LIMIT_FPS_SUMMARY),
-                        checked = limitFPS,
-                        onCheckedChange = {
-                            limitFPS = it
-                            preferences.edit().putBoolean("pref_limit_fps", it).apply()
-                        }
+                    DisplaySwitch(
+                        preferences = preferences,
+                        revision = revision,
+                        key = Constants.PREF_SCREENSHOT_SWITCH,
+                        titleRes = R.string.pref_screenshot_title,
+                        summaryRes = R.string.pref_screenshot_summary,
+                    )
+                    DisplaySwitch(
+                        preferences = preferences,
+                        revision = revision,
+                        key = MICRO3D_MESSAGE_KEY,
+                        titleRes = R.string.pref_mascot_title,
+                        summaryRes = R.string.pref_mascot_summary,
                     )
                 }
             }
         }
+    }
+}
+
+private const val MICRO3D_MESSAGE_KEY = "micro3d_using_message"
+
+@Composable
+private fun DisplaySwitch(
+    preferences: SharedPreferences,
+    revision: Int,
+    key: String,
+    titleRes: Int,
+    summaryRes: Int,
+    default: Boolean = false
+) {
+    val checked = remember(preferences, key, revision) {
+        preferences.getBoolean(key, default)
+    }
+    SwitchPreference(
+        title = stringResource(titleRes),
+        summary = stringResource(summaryRes),
+        checked = checked,
+        onCheckedChange = { preferences.edit().putBoolean(key, it).apply() },
+    )
+}
+
+@Composable
+private fun SettingsGroup(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .padding(bottom = 12.dp)
+    ) {
+        content()
     }
 }

@@ -1,2 +1,39 @@
-app/build
-dexlib/build/.transforms
+# Gradle
+.gradle/
+.gradle-home/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Build outputs
+build/
+app/build/
+dexlib/build/
+*.apk
+*.ap_
+*.aab
+*.dex
+release/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+captures/
+local.properties
+.navigation/
+
+# Kotlin
+.kotlin/
+
+# NDK / native build intermediates
+.externalNativeBuild/
+.cxx/
+obj/
+
+# Logs and temp
+*.log
+*.hprof
+*.tmp
+.DS_Store
+Thumbs.db

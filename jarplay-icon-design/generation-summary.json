@@ -1,0 +1,49 @@
+{
+  "skill": {
+    "name": "solo-graphic-generation",
+    "version": "2026.08.06.21.24.57",
+    "release": "unsupported-size-user-confirmation"
+  },
+  "requestedSizeVerbatim": "1024×1024",
+  "actualToolImageSize": "1920×1920",
+  "sizeUserConfirmed": true,
+  "confirmedSizeNote": "User chose 1920×1920 after 1024×1024 was rejected by the image generation backend for being below the minimum pixel count.",
+  "projectName": "JarPlay 应用图标",
+  "assetCount": 2,
+  "assets": [
+    {
+      "filename": "jarplay-icon-full",
+      "title": "JarPlay 主图标完整版",
+      "intendedSize": "1920×1920",
+      "extension": ".jpg",
+      "status": "generated",
+      "canvasNodeId": "image-001"
+    },
+    {
+      "filename": "jarplay-icon-foreground",
+      "title": "JarPlay 自适应图标前景",
+      "intendedSize": "1920×1920",
+      "extension": ".jpg",
+      "status": "generated",
+      "canvasNodeId": "image-003"
+    }
+  ],
+  "derivedAssets": {
+    "fullPng": "jarplay-icon-full.png",
+    "foregroundPng": "jarplay-icon-foreground.png",
+    "androidExports": [
+      "ic_launcher-playstore.png",
+      "ic_launcher-mdpi.png",
+      "ic_launcher-hdpi.png",
+      "ic_launcher-xhdpi.png",
+      "ic_launcher-xxhdpi.png",
+      "ic_launcher-xxxhdpi.png",
+      "ic_launcher_foreground-mdpi.png",
+      "ic_launcher_foreground-hdpi.png",
+      "ic_launcher_foreground-xhdpi.png",
+      "ic_launcher_foreground-xxhdpi.png",
+      "ic_launcher_foreground-xxxhdpi.png"
+    ]
+  },
+  "applicationTarget": "d:\\JarPlay\\JarPlay\\JarPlay\\app\\src\\main\\res"
+}

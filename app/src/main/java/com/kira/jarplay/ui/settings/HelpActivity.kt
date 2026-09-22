@@ -3,6 +3,7 @@ package com.kira.jarplay.ui.settings
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,8 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -22,10 +21,13 @@ import com.kira.jarplay.ui.theme.JarPlayTheme
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 class HelpActivity : ComponentActivity() {
@@ -41,14 +43,17 @@ class HelpActivity : ComponentActivity() {
 
 @Composable
 fun HelpScreen(onBack: () -> Unit) {
+    val scrollBehavior = MiuixScrollBehavior()
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = stringResource(R.string.action_help),
+                scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            imageVector = MiuixIcons.Back,
                             contentDescription = stringResource(R.string.close)
                         )
                     }
@@ -61,6 +66,7 @@ fun HelpScreen(onBack: () -> Unit) {
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(16.dp)
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {

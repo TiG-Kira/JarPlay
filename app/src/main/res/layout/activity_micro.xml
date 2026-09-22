@@ -1,39 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/midletFrame"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@android:color/black"
+    android:orientation="vertical"
     tools:context="javax.microedition.shell.MicroActivity">
 
-    <LinearLayout
-        android:id="@+id/virtual_display"
+    <!--
+        模拟器画面区域。
+        displayable_container 承载 MIDlet 的 SurfaceView，overlay_view 负责软键栏与 FPS 计数，
+        compose_controls 是最上层的控制层（顶部工具栏或沉浸模式的浮动菜单按钮）。
+        compose_controls 只占自身高度，不会遮挡画面其余部分的手势与点击。
+    -->
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
-
-        <androidx.appcompat.widget.Toolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?attr/colorPrimary"
-            android:descendantFocusability="blocksDescendants"
-            android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-            app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
-            tools:title="MIDlet Title" />
+        android:layout_height="0dp"
+        android:layout_weight="1">
 
         <FrameLayout
             android:id="@+id/displayable_container"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-    </LinearLayout>
+            android:layout_height="match_parent"
+            android:background="@android:color/black" />
 
-    <!-- MUST be transparent and math root container -->
-    <javax.microedition.lcdui.overlay.OverlayView
-        android:id="@+id/overlay_view"
+        <javax.microedition.lcdui.overlay.OverlayView
+            android:id="@+id/overlay_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <androidx.compose.ui.platform.ComposeView
+            android:id="@+id/compose_controls"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top" />
+
+    </FrameLayout>
+
+    <androidx.compose.ui.platform.ComposeView
+        android:id="@+id/compose_virtual_buttons"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="wrap_content" />
 
-</FrameLayout>
+</LinearLayout>

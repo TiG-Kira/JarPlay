@@ -122,8 +122,8 @@ android {
     }
 }
 
-// Post-build step: realign prebuilt .so files to 16KB page size for Android 16KB compatibility.
-// This is necessary because some third-party libraries (mobile-ffmpeg, mididriver, etc.)
+// Post-build step: realign ALL .so files to 16KB page size for Android 16KB compatibility.
+// This is necessary because third-party libraries (mobile-ffmpeg, mididriver, etc.)
 // have been compiled with 4KB alignment and fail the VIC 16KB alignment check.
 androidComponents {
     onVariants(selector().all()) { variant ->
@@ -156,10 +156,21 @@ androidComponents {
                     logger.warn("Could not find NDK directory, skipping 16KB realignment")
                     return
                 }
-                def llvmObjcopy = "${ndkDir}/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-objcopy.exe"
-                if (!new File(llvmObjcopy).exists()) {
-                    def altPath = "${ndkDir}/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-objcopy"
-                    if (new File(altPath).exists()) llvmObjcopy = altPath
+
+                def llvmAlign = "${ndkDir}/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-align.exe"
+                if (!new File(llvmAlign).exists()) {
+                    def altPath = "${ndkDir}/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-align"
+                    if (new File(altPath).exists()) llvmAlign = altPath
+                }
+                if (!new File(llvmAlign).exists()) {
+                    logger.warn("llvm-align not found at ${llvmAlign}, trying llvm-objcopy fallback...")
+                    llvmAlign = "${ndkDir}/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-objcopy.exe"
+                    def altObj = "${ndkDir}/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-objcopy"
+                    if (new File(altObj).exists()) llvmAlign = altObj
+                    if (!new File(llvmAlign).exists()) {
+                        logger.warn("No alignment tool found, skipping 16KB realignment")
+                        return
+                    }
                 }
 
                 def libsDir = "${buildDir}/intermediates/merged_native_libs/${variantName}/${mergeTaskName}/out"
@@ -169,43 +180,46 @@ androidComponents {
                     return
                 }
 
-                def libsToRealign = [
-                    "mobileffmpeg", "midi", "avfilter", "avformat", "avcodec",
-                    "avutil", "swresample", "swscale", "avdevice",
-                    "image_processing_util_jni", "cpu_features", "jpeg-turbo",
-                ]
-
                 int realignedCount = 0
+                int skippedCount = 0
                 libsFile.eachFileRecurse(groovy.io.FileType.FILES) { soFile ->
                     if (!soFile.name.endsWith(".so")) return
-                    def baseName = soFile.name.substring(0, soFile.name.length() - 3)
-                    def shouldRealign = libsToRealign.any { baseName.contains(it) }
-                    if (!shouldRealign) return
 
-                    logger.lifecycle("Realigning ${soFile.name} for 16KB page size...")
                     def tmpFile = new File(soFile.parentFile, soFile.name + ".16k")
                     try {
-                        def result = exec {
-                            executable llvmObjcopy
-                            args ["-z", "max-page-size=16384", soFile.absolutePath, tmpFile.absolutePath]
+                        def stdout = new ByteArrayOutputStream()
+                        def stderr = new ByteArrayOutputStream()
+                        exec {
+                            executable llvmAlign
+                            if (llvmAlign.contains("llvm-align")) {
+                                args ["--value=16384", soFile.absolutePath, tmpFile.absolutePath]
+                            } else {
+                                args ["-z", "max-page-size=16384", soFile.absolutePath, tmpFile.absolutePath]
+                            }
+                            standardOutput = stdout
+                            errorOutput = stderr
                             ignoreExitValue = true
                         }
-                        if (result.exitValue == 0 && tmpFile.exists() && tmpFile.length() > 0) {
+                        if (tmpFile.exists() && tmpFile.length() > 0) {
                             soFile.delete()
                             tmpFile.renameTo(soFile)
                             realignedCount++
                         } else {
-                            logger.warn("Failed to realign ${soFile.name} (exit=${result.exitValue})")
+                            logger.warn("Failed to realign ${soFile.name}: ${stderr.toString()}")
                             if (tmpFile.exists()) tmpFile.delete()
+                            skippedCount++
                         }
                     } catch (Exception e) {
                         logger.warn("Error realigning ${soFile.name}: ${e.message}")
                         if (tmpFile.exists()) tmpFile.delete()
+                        skippedCount++
                     }
                 }
 
                 if (realignedCount > 0) {
-                    logger.lifecycle("Realigned ${realignedCount} .so files for 16KB compatibility")
+                    logger.lifecycle("Realigned ${realignedCount} .so files for 16KB compatibility (skipped: ${skippedCount})")
+                } else {
+                    logger.lifecycle("No .so files needed realignment (checked ${skippedCount + realignedCount} files)")
                 }
             }
         }
@@ -274,14 +288,17 @@ dependencies {
     implementation "androidx.compose.material3:material3"
     implementation "androidx.compose.material:material-icons-extended"
     implementation "androidx.navigation:navigation-compose:2.8.0"
+    implementation "androidx.navigationevent:navigationevent:1.0.0"
+    implementation "androidx.navigationevent:navigationevent-compose:1.0.0"
     debugImplementation "androidx.compose.ui:ui-tooling"
 
     // Miuix (HyperOS) UI
-    implementation "top.yukonga.miuix.kmp:miuix-ui-android:0.9.4-rc01"
-    implementation "top.yukonga.miuix.kmp:miuix-preference-android:0.9.4-rc01"
-    implementation "top.yukonga.miuix.kmp:miuix-icons-android:0.9.4-rc01"
+    implementation "top.yukonga.miuix.kmp:miuix-ui-android:0.9.4"
+    implementation "top.yukonga.miuix.kmp:miuix-preference-android:0.9.4"
+    implementation "top.yukonga.miuix.kmp:miuix-icons-android:0.9.4"
 
     // Android Jetpack
+    implementation "androidx.core:core-ktx:1.15.0"
     implementation "androidx.room:room-runtime:$roomVersion"
     implementation "androidx.room:room-rxjava2:$roomVersion"
     annotationProcessor "androidx.room:room-compiler:$roomVersion"
@@ -295,6 +312,8 @@ dependencies {
     implementation 'com.android.volley:volley:1.2.1'
     implementation 'com.google.code.gson:gson:2.9.0'
     implementation 'com.google.guava:guava:31.0.1-android'
+    implementation "com.squareup.okhttp3:okhttp:4.12.0"
+    implementation "io.coil-kt:coil-compose:2.7.0"
 
     // Threads, Streams and Archives
     implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'

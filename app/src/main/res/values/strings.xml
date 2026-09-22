@@ -35,6 +35,9 @@
     <string name="action_reinstall">Reinstall</string>
     <string name="action_settings">Settings</string>
     <string name="action_context_delete">Delete</string>
+    <string name="app_deleted">App deleted</string>
+    <string name="edit_keyboard">Edit keyboard</string>
+    <string name="exit_edit_mode">Exit edit mode</string>
     <string name="action_context_rename">Rename</string>
     <string name="retry">retry</string>
     <string name="err_missing_app">Application not found.\nPlease check storage device %savailability or re-create shortcut.</string>
@@ -61,7 +64,8 @@
     <string name="reinstall">App already installed.\n\nDo you want to reinstall it?\nAll data will be saved.</string>
     <string name="reinstall_newest">Update this app to version %1$s?\n\nCurrently installed: %2$s\nAll data will be saved.</string>
     <string name="reinstall_older">Replace this app with version %1$s?\n\nCurrently installed: %2$s\nOlder version may not working correctly with recorded data.</string>
-    <string name="loading_info">loading info…</string>
+    <string name="loading_info">J2ME Installer</string>
+    <string name="installer_title">J2ME Installer</string>
 
     <string name="START_CMD">Start</string>
     <string name="CANCEL_CMD">Cancel</string>
@@ -288,6 +292,42 @@
     <string name="pref_keep_screen_on">Keep screen on</string>
     <string name="pref_keep_screen_on_summary">Prevent screen from turning off during gameplay</string>
 
+    <!-- About page strings -->
+    <string name="device_model">Device Model</string>
+    <string name="android_version">Android Version</string>
+    <string name="kernel_version">Kernel Version</string>
+    <string name="developer_name">Developer</string>
+    <string name="arrow">Arrow</string>
+    <string name="license_info">JarPlay is released under the GPL 3.0 license. Based on J2ME Loader by Nikita Shakarun.</string>
+
+    <!-- Update checker & APK downloader -->
+    <string name="new_version_found">New Version Found</string>
+    <string name="up_to_date">Up to Date</string>
+    <string name="current_version">Current Version</string>
+    <string name="latest_version">Latest Version</string>
+    <string name="check_updates">Check for Updates</string>
+    <string name="new_version_available">New version available</string>
+    <string name="enable_beta_update">Get Beta Versions</string>
+    <string name="enable_beta_update_desc">Include pre-release versions when checking for updates</string>
+    <string name="beta_version_available">Beta version available</string>
+    <string name="beta_warning_title">Enable Beta Updates?</string>
+    <string name="beta_warning_message">Beta releases feature work-in-progress, experimental changes, and unfinished features. You may encounter crashes, instability, and data loss. Please do not use Beta versions in production environments. Report any issues on GitHub.</string>
+    <string name="beta_warning_confirm">Enable</string>
+    <string name="beta_warning_cancel">Cancel</string>
+    <string name="update_log">Update Log</string>
+    <string name="later">Later</string>
+    <string name="manual">Manual</string>
+    <string name="download">Download</string>
+    <string name="downloading">Downloading...</string>
+    <string name="is_latest">Already the latest version. Version:</string>
+    <string name="download_failed">Download failed</string>
+    <string name="install_failed">Install failed</string>
+    <string name="response_body_empty">Response body is empty</string>
+    <string name="apk_download_failed">APK file download failed</string>
+    <string name="request_install_permission_failed">Unable to open install settings</string>
+    <string name="download_failed_with_code">Download failed with code: %1$d</string>
+    <string name="ok">OK</string>
+
     <!-- Screen category strings -->
     <string name="pref_category_display">Display</string>
     <string name="pref_category_performance">Performance</string>
@@ -312,4 +352,41 @@
     <string name="help_tips_content">• You can customize screen orientation, shader filters and more in settings\n• Virtual keyboard can be enabled in Screen settings\n• Tap the + button on the app list to install a new J2ME app\n• Long press an app to edit, delete or configure it\n• Use profiles to save your favorite emulator settings</string>
     <string name="help_faq_title">Frequently Asked</string>
     <string name="help_faq_content">If the game runs slowly, try disabling filtering or reducing FPS limit.\nIf the image flickers, enable \"Immediate processing mode\" in Screen settings.\nFor full-screen games, enable \"Force fullscreen\" option.</string>
+    <!-- Playback page -->
+    <string name="play_toggle_keyboard">Show or hide the virtual keyboard</string>
+    <string name="play_edit_layout">Edit key layout</string>
+    <string name="play_edit_layout_summary">Tap two keys to swap their positions</string>
+    <string name="play_keyboard">Virtual keyboard</string>
+    <string name="play_keyboard_shown">Visible</string>
+    <string name="play_keyboard_hidden">Hidden</string>
+    <string name="play_frame_rate">Limit frame rate</string>
+    <string name="play_frame_rate_value">%1$d FPS</string>
+    <string name="play_frame_rate_follow">Follow app profile</string>
+    <string name="play_frame_rate_none">Unlimited</string>
+    <string name="play_frame_rate_summary">Leave empty for unlimited. 30 or 60 is recommended.</string>
+    <string name="play_frame_rate_unit">FPS</string>
+    <string name="play_layout_hint">Tap one key, then another, to swap them</string>
+    <string name="play_exit">Exit</string>
+    <string name="play_exit_confirm">Stop app</string>
+    <string name="cancel_action">Cancel</string>
+
+    <!-- App list -->
+    <string name="app_launch">Launch</string>
+    <string name="app_configure">App settings</string>
+    <string name="app_delete_confirm">Delete this app and its data?</string>
+
+    <!-- Config page -->
+    <string name="config_loading">Loading settings…</string>
+    <string name="pref_screen_scale_type_summary">None keeps original pixels; Fit keeps the aspect ratio; Fill stretches to the whole display area.</string>
+    <string name="pref_screen_gravity_summary">Where to anchor the emulator screen when it does not fill the display area.</string>
+    <string name="swap_resolution">Swap width and height</string>
+
+    <!-- Screen settings -->
+    <string name="pref_toolbar_title">Show top bar</string>
+    <string name="pref_toolbar_summary">Turn off to play in immersive mode; open the menu with the floating button or the back key.</string>
+    <string name="pref_enable_statusbar_summary">Keep the status bar visible while playing.</string>
+    <string name="pref_add_cutout_area_summary">Let the picture extend into the display cutout area.</string>
+    <string name="pref_wakelock_summary">Prevent the screen from turning off while playing.</string>
+    <string name="pref_category_behavior">Behavior</string>
+    <string name="pref_vibration_summary">Vibrate when a J2ME app requests it.</string>
 </resources>

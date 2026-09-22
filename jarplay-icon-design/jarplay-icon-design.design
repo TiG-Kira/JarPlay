@@ -1,0 +1,81 @@
+{
+  "data": [
+    {
+      "id": "image-001",
+      "title": "JarPlay 主图标完整版",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1787470800000,
+      "canvasData": {
+        "x": 0,
+        "y": 0,
+        "naturalSize": {
+          "width": 1920,
+          "height": 1920
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/jarplay-icon-full.jpg"
+      }
+    },
+    {
+      "id": "image-002",
+      "title": "JarPlay 主图标 PNG",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1787470800001,
+      "canvasData": {
+        "x": 480,
+        "y": 0,
+        "naturalSize": {
+          "width": 1920,
+          "height": 1920
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/jarplay-icon-full.png"
+      }
+    },
+    {
+      "id": "image-003",
+      "title": "JarPlay 自适应图标前景",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1787470800002,
+      "canvasData": {
+        "x": 960,
+        "y": 0,
+        "naturalSize": {
+          "width": 1920,
+          "height": 1920
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/jarplay-icon-foreground.jpg"
+      }
+    },
+    {
+      "id": "image-004",
+      "title": "JarPlay 自适应图标前景 PNG",
+      "type": "image",
+      "version": 1,
+      "createdAt": 1787470800003,
+      "canvasData": {
+        "x": 1440,
+        "y": 0,
+        "naturalSize": {
+          "width": 1920,
+          "height": 1920
+        }
+      },
+      "devMetadata": {
+        "imageSrc": "assets/jarplay-icon-foreground.png"
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": true,
+    "deviceType": "freeSize",
+    "projectName": "JarPlay 应用图标"
+  }
+}

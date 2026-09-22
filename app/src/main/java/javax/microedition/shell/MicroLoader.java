@@ -229,6 +229,21 @@ public class MicroLoader {
 		return params.orientation;
 	}
 
+	/** 模拟器画面底色，用于让外层容器与画面区域保持一致。 */
+	int getBackgroundColor() {
+		return params.screenBackgroundColor;
+	}
+
+	/** 配置中的默认帧率上限，-1 表示跟随全局，0 表示不限帧。 */
+	int getFpsLimit() {
+		return params.fpsLimit;
+	}
+
+	/** 该应用是否默认显示虚拟键盘。 */
+	boolean isShowKeyboard() {
+		return params.showKeyboard;
+	}
+
 	void setLimitFps(int fps) {
 		if (fps == -1) Canvas.setLimitFps(params.fpsLimit);
 		else Canvas.setLimitFps(fps);
@@ -236,12 +251,8 @@ public class MicroLoader {
 
 	void applyConfiguration() {
 		try {
-			// Apply configuration to the launching MIDlet
-			if (params.showKeyboard) {
-				ContextHolder.setVk(new VirtualKeyboard(params));
-			} else {
-				ContextHolder.setVk(null);
-			}
+			// 强制禁用老键盘，使用新的 Compose 键盘
+			ContextHolder.setVk(null);
 			setProperties();
 
 			final String[] propLines = params.systemProperties.split("\n");

@@ -1099,6 +1099,18 @@ public class VirtualKeyboard implements Overlay, Runnable {
 		}
 	}
 
+	public void toggle() {
+		if (visible) {
+			visible = false;
+			handler.removeCallbacks(this);
+			overlayView.postInvalidate();
+		} else {
+			visible = true;
+			handler.removeCallbacks(this);
+			overlayView.postInvalidate();
+		}
+	}
+
 	@Override
 	public void cancel() {
 		for (VirtualKey key : keypad) {

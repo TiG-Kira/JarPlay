@@ -1,8 +1,9 @@
 package com.kira.jarplay.ui.settings
 
 import android.content.Intent
+import android.content.SharedPreferences
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,18 +13,24 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.preference.PreferenceManager
+import com.kira.jarplay.BuildConfig
 import com.kira.jarplay.R
 import com.kira.jarplay.config.ProfilesActivity
+import com.kira.jarplay.util.Constants
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.ArrowPreference
@@ -31,34 +38,40 @@ import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(scrollBehavior: ScrollBehavior? = null) {
     val context = LocalContext.current
-    val preferences = remember {
-        androidx.preference.PreferenceManager.getDefaultSharedPreferences(context)
+    val preferences = remember(context) {
+        PreferenceManager.getDefaultSharedPreferences(context)
     }
 
-    var virtualKeyboardEnabled by remember {
-        mutableStateOf(preferences.getBoolean("pref_virtual_keyboard", false))
+    // 子页面（主题 / 屏幕设置等）也会改这些偏好项，这里监听变化以保持开关同步
+    var revision by remember { mutableIntStateOf(0) }
+    DisposableEffect(preferences) {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> revision++ }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
     }
-    var keepScreenOn by remember {
-        mutableStateOf(preferences.getBoolean("pref_keep_screen_on", false))
-    }
-    var enableVibration by remember {
-        mutableStateOf(preferences.getBoolean("pref_enable_vibration", true))
+
+    val toolbarEnabled = remember(preferences, revision) {
+        preferences.getBoolean(Constants.PREF_TOOLBAR, false)
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                } else {
+                    Modifier
+                }
+            ),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         item {
             SmallTitle(text = stringResource(R.string.pref_category_appearance))
-            Card(
-                modifier = Modifier
-                    .padding(horizontal = 0.dp)
-                    .padding(bottom = 12.dp),
-            ) {
+            SettingsCard {
                 ArrowPreference(
                     title = stringResource(R.string.pref_theme_title),
                     summary = stringResource(R.string.pref_theme_summary),
@@ -71,36 +84,13 @@ fun SettingsScreen() {
 
         item {
             SmallTitle(text = stringResource(R.string.pref_category_emulator))
-            Card(
-                modifier = Modifier
-                    .padding(horizontal = 0.dp)
-                    .padding(bottom = 12.dp),
-            ) {
+            SettingsCard {
                 SwitchPreference(
-                    title = stringResource(R.string.pref_virtual_keyboard),
-                    summary = stringResource(R.string.pref_virtual_keyboard_summary),
-                    checked = virtualKeyboardEnabled,
+                    title = stringResource(R.string.pref_toolbar_title),
+                    summary = stringResource(R.string.pref_toolbar_summary),
+                    checked = toolbarEnabled,
                     onCheckedChange = {
-                        virtualKeyboardEnabled = it
-                        preferences.edit().putBoolean("pref_virtual_keyboard", it).apply()
-                    },
-                )
-                SwitchPreference(
-                    title = stringResource(R.string.pref_keep_screen_on),
-                    summary = stringResource(R.string.pref_keep_screen_on_summary),
-                    checked = keepScreenOn,
-                    onCheckedChange = {
-                        keepScreenOn = it
-                        preferences.edit().putBoolean("pref_keep_screen_on", it).apply()
-                    },
-                )
-                SwitchPreference(
-                    title = stringResource(R.string.pref_vibration_title),
-                    summary = stringResource(R.string.pref_audio_summary),
-                    checked = enableVibration,
-                    onCheckedChange = {
-                        enableVibration = it
-                        preferences.edit().putBoolean("pref_enable_vibration", it).apply()
+                        preferences.edit().putBoolean(Constants.PREF_TOOLBAR, it).apply()
                     },
                 )
                 ArrowPreference(
@@ -122,11 +112,7 @@ fun SettingsScreen() {
 
         item {
             SmallTitle(text = stringResource(R.string.pref_category_other))
-            Card(
-                modifier = Modifier
-                    .padding(horizontal = 0.dp)
-                    .padding(bottom = 12.dp),
-            ) {
+            SettingsCard {
                 ArrowPreference(
                     title = stringResource(R.string.action_profiles),
                     summary = stringResource(R.string.profiles_description),
@@ -152,20 +138,32 @@ fun SettingsScreen() {
         }
 
         item {
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 16.dp),
                 horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "JarPlay v1.0.0",
+                    text = "JarPlay ${BuildConfig.VERSION_NAME}",
                     style = MiuixTheme.textStyles.footnote2,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    fontWeight = FontWeight.Normal
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+            .padding(bottom = 12.dp)
+    ) {
+        content()
     }
 }

@@ -82,7 +82,6 @@ public class LoadProfileDialog extends DialogFragment {
 						}
 						ProfilesManager.load((Profile) binding.list.getItemAtPosition(pos), configPath,
 								configChecked, vkChecked);
-						((ConfigActivity) requireActivity()).loadParams(true);
 					} catch (Exception e) {
 						e.printStackTrace();
 						Toast.makeText(requireActivity(), R.string.error, Toast.LENGTH_SHORT).show();
