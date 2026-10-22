@@ -98,6 +98,15 @@ jobs:
           test -s app/ki-terminal-release.jks
           echo "JKS 已写入：$(stat -c%s app/ki-terminal-release.jks) 字节"
 
+      - name: 调试 SDK 目录状态
+        run: |
+          set -x
+          which sdkmanager || true
+          sdkmanager --version || true
+          ls -la "$ANDROID_HOME/platforms/" || true
+          head -c 400 "$ANDROID_HOME/platforms/android-37/package.xml" || true
+          echo ""
+
       - name: 赋予 gradlew 执行权限
         run: chmod +x gradlew
 
