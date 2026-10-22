@@ -67,7 +67,7 @@ jobs:
       - name: 编译 openRelease APK
         shell: bash
         env:
-          KEYSTORE_FILE: app/ki-terminal-release.jks
+          KEYSTORE_FILE: ki-terminal-release.jks
         run: |
           set -e
           ./gradlew :app:assembleOpenRelease --build-cache --console=plain
