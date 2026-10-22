@@ -14,27 +14,21 @@ data class AppVersion(
 ) : Comparable<AppVersion> {
 
     companion object {
-        private val VERSION_REGEX = Regex("""^(R|r)?(\d+)\.(\d+)\.(\d+)\.RB$""")
-        private val PLAIN_REGEX = Regex("""^v?(R|r)?(\d+)\.(\d+)\.(\d+)$""")
+        // 版本号形如 "1.0.4"、"v1.0.4"、"1.0.4-open"、"v1.0.4-beta.1"、"1.0.3.RB"。
+        // 只取前导的 major.minor.patch，忽略构建变体 / 预发布等后缀 —— 是否为预发布
+        // 由 GitHub release 的 prerelease 字段判定，不靠 tag 文本猜。
+        // （旧实现把结尾锚死成 "$"，带 "-open" 这类后缀的版本号一律解析失败，
+        //   于是 checkForUpdates 直接返回 CheckFailed，更新按钮表现得像空壳。）
+        private val VERSION_REGEX = Regex("""(\d+)\.(\d+)(?:\.(\d+))?""")
 
         fun parse(versionName: String): AppVersion? {
-            val versionMatch = VERSION_REGEX.find(versionName)
-            if (versionMatch != null) {
-                return AppVersion(
-                    major = versionMatch.groupValues[2].toInt(),
-                    minor = versionMatch.groupValues[3].toInt(),
-                    patch = versionMatch.groupValues[4].toInt()
-                )
-            }
-            val plainMatch = PLAIN_REGEX.find(versionName)
-            if (plainMatch != null) {
-                return AppVersion(
-                    major = plainMatch.groupValues[2].toInt(),
-                    minor = plainMatch.groupValues[3].toInt(),
-                    patch = plainMatch.groupValues[4].toInt()
-                )
-            }
-            return null
+            val match = VERSION_REGEX.find(versionName.trim().trimStart('v', 'V'))
+                ?: return null
+            return AppVersion(
+                major = match.groupValues[1].toIntOrNull() ?: return null,
+                minor = match.groupValues[2].toIntOrNull() ?: return null,
+                patch = match.groupValues[3].toIntOrNull() ?: 0,
+            )
         }
     }
 
@@ -42,7 +36,7 @@ data class AppVersion(
         return compareValuesBy(this, other, { it.major }, { it.minor }, { it.patch })
     }
 
-    fun toVersionName(): String = "$major.$minor.$patch.RB"
+    fun toVersionName(): String = "$major.$minor.$patch"
 }
 
 sealed class UpdateResult {
@@ -104,7 +98,6 @@ object UpdateChecker {
                     val body = response.body?.string() ?: ""
                     val releases = JSONArray(body)
 
-                    var currentTagMatched = false
                     var bestRelease: JSONObject? = null
                     var bestVersion: AppVersion? = null
                     var bestVersionName = ""
@@ -120,10 +113,6 @@ object UpdateChecker {
 
                         if (tagVersion == null) continue
 
-                        if (tagVersion == currentVersion) {
-                            currentTagMatched = true
-                        }
-
                         val isPreRelease = release.optBoolean("prerelease", false)
                         if (!betaEnabled && isPreRelease) continue
 
@@ -133,13 +122,6 @@ object UpdateChecker {
                             bestRelease = release
                             bestIsPreRelease = isPreRelease
                         }
-                    }
-
-                    if (!currentTagMatched) {
-                        return@withContext UpdateResult.UpToDate(
-                            currentVersion = currentVersion,
-                            currentVersionName = currentVersionName
-                        )
                     }
 
                     if (bestVersion == null || bestVersion <= currentVersion) {
@@ -230,7 +212,4 @@ object UpdateChecker {
         }
     }
 
-    fun constructDownloadUrl(versionName: String): String {
-        return "$GITHUB_RELEASE_PAGE_URL/download/$versionName/JarPlay_${versionName}_universal.apk"
-    }
 }

@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.rememberSplineBasedDecay
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,7 +43,6 @@ import com.kira.jarplay.util.FileUtils
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.TopAppBarState
 import top.yukonga.miuix.kmp.blur.layerBackdrop as miuixLayerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop as rememberMiuixLayerBackdrop
 import top.yukonga.miuix.kmp.glass.GlassIconButton
@@ -103,23 +100,11 @@ fun MainContent(
     )
     val icons = listOf(MiuixIcons.VerticalSplit, MiuixIcons.Settings)
 
-    // 顶栏折叠依赖嵌套滚动把内容位移喂给 scrollBehavior.state.contentOffset；
-    // miuix 0.9.4 的 MiuixScrollBehavior 默认值不会真正跟踪滚动（canScroll 默认不生效），
-    // 必须显式 canScroll = { true } 才能驱动 GlassTopAppBar 折叠（对齐 KiTerminal-UX）。
-    // canScroll / snap / fling 都用 remember 固定实例，避免每次重组重建 ScrollBehavior
-    // 导致 nestedScroll 连接与吸顶 snap 动画被打断（表现为“吸顶后小标题间歇性消失”）。
-    val canScrollAlways: () -> Boolean = remember { { true } }
-    val snapSpec = remember { spring<Float>(stiffness = 2500f) }
-    val flingSpec = rememberSplineBasedDecay<Float>()
-    val topAppBarState = remember(selectedTab) { TopAppBarState(0f, 0f, 0f) }
-    // MiuixScrollBehavior 是 @Composable 工厂，必须直接在组合体内调用（不能包进 remember{} 的 lambda）。
-    // 稳定性由下面这几个被 remember 固定的参数保证，工厂内部会按它们做记忆。
-    val scrollBehavior = MiuixScrollBehavior(
-        state = topAppBarState,
-        canScroll = canScrollAlways,
-        snapAnimationSpec = snapSpec,
-        flingAnimationSpec = flingSpec,
-    )
+    // 顶栏折叠是 miuix 的内置行为：大标题滚动后折叠成居中的小标题，GlassTopAppBar
+    // 与普通 TopAppBar 一致。这里用默认构造即可，不要额外覆盖 snap / fling 动画参数，
+    // 那些只影响折叠手感（曾把设置页本来正常的吸顶动画改坏），也不要传 canScroll
+    // 之类的开关——设置页不传任何参数折叠就正常，问题只出在页面侧的滚动容器上。
+    val scrollBehavior = MiuixScrollBehavior()
 
     // 隐藏手势提示线（小白条）后 navigationBars inset 上报为 0，底栏会贴死屏幕底边；
     // 保底 12dp 仅在 inset 不足时生效（同 KiTerminal-UX）。
@@ -212,6 +197,17 @@ fun MainContent(
                         .background(MiuixTheme.colorScheme.background)
                         .miuixLayerBackdrop(glassBackdrop)
                 ) {
+                    // 取景层必须自己铺一层不透明的主题底色，而且是作为「内容」铺：
+                    // miuixLayerBackdrop 捕获的是本节点绘制的内容，节点自身 background
+                    // 修饰符画的底色不在被捕获范围内。之前只在修饰符上铺底色，结果是
+                    // 只有卡片挡住的位置玻璃才渲染得出来，一离开卡片（应用页空白区、
+                    // 设置页卡片之间的空隙）底板玻璃就整块消失。
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MiuixTheme.colorScheme.background)
+                    )
+
                     when (selectedTab) {
                         0 -> AppsScreen(
                             appListModel = appListModel,

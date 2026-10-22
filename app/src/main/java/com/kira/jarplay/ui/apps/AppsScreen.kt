@@ -78,27 +78,32 @@ fun AppsScreen(
         }
     }
 
-    if (apps.isEmpty()) {
-        EmptyAppsState()
-    } else {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .then(
-                    if (scrollBehavior != null) {
-                        Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentPadding = PaddingValues(
-                start = 12.dp,
-                top = 8.dp + topClearance,
-                end = 12.dp,
-                bottom = 24.dp + bottomClearance,
+    // 与设置页同构：无论有没有应用都用同一个 LazyColumn 承载，空态只是其中一个 item。
+    // 以前空态走的是独立的 Box 分支，那一支没有挂 nestedScroll，顶栏收不到滚动位移
+    // 因此永远不折叠，取景层也没有内容可折射。
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(
+                if (scrollBehavior != null) {
+                    Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                } else {
+                    Modifier
+                }
             ),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        contentPadding = PaddingValues(
+            start = 12.dp,
+            top = 8.dp + topClearance,
+            end = 12.dp,
+            bottom = 24.dp + bottomClearance,
+        ),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (apps.isEmpty()) {
+            item {
+                EmptyAppsState(modifier = Modifier.fillParentMaxHeight())
+            }
+        } else {
             items(apps, key = { it.id }) { appItem ->
                 AppItemCard(
                     item = appItem,
@@ -159,10 +164,10 @@ fun AppsScreen(
 }
 
 @Composable
-private fun EmptyAppsState() {
+private fun EmptyAppsState(modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = modifier
+            .fillMaxWidth()
             .padding(horizontal = 32.dp),
         contentAlignment = Alignment.Center
     ) {

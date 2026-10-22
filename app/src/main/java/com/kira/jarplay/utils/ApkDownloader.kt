@@ -126,9 +126,13 @@ object ApkDownloader {
         try {
             val intent = Intent(Intent.ACTION_VIEW)
             val apkUri: Uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                // authority 必须与 AndroidManifest 里声明的 "${applicationId}.provider"
+                // 完全一致（filepicker 库提供的 nnf_provider_paths 是 root-path，路径够宽）。
+                // 之前写成 ".fileprovider"，与 manifest 对不上，getUriForFile 直接抛
+                // IllegalArgumentException，下载完永远装不上。
                 FileProvider.getUriForFile(
                     context,
-                    "${context.packageName}.fileprovider",
+                    "${context.packageName}.provider",
                     apkFile
                 )
             } else {
@@ -156,16 +160,9 @@ object ApkDownloader {
         return File(context.getExternalFilesDir(null), apkFileName)
     }
 
-    fun constructDownloadUrl(version: String, context: Context): String {
-        val abi = getDeviceAbi()
-        val buildType = getBuildType(context)
-        val apkFileName = if (buildType == "release") {
-            "app-${abi}-release.apk"
-        } else {
-            "app-${abi}-debug.apk"
-        }
-        return "https://github.com/TiG-Kira/JarPlay/releases/download/$version/$apkFileName"
-    }
+    // 注意：APK 下载地址不要在这里按文件名拼（拼出来的名字与 CI 产物不一致，必然 404）。
+    // 统一使用 UpdateResult.UpdateAvailable.apkDownloadUrl —— 那是 release assets 里
+    // browser_download_url 的真实地址。
 
     private fun getBuildType(context: Context): String {
         return try {

@@ -1,6 +1,8 @@
 package com.kira.jarplay.ui.settings
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.LinearEasing
@@ -78,6 +80,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
@@ -118,10 +121,9 @@ fun AboutScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     // 本页在主界面取景层之外，自建一层供玻璃顶栏折射页面内容
     val glassPage = rememberGlassPageBackdrop()
-    // 显式 canScroll = { true }：miuix 0.9.4 的 MiuixScrollBehavior 默认值不会真正跟踪滚动，
-    // 不指定会导致玻璃顶栏的 material 在滚动后不浮现（折叠失效）。
-    val canScrollAlways: () -> Boolean = remember { { true } }
-    val scrollBehavior = MiuixScrollBehavior(canScroll = canScrollAlways)
+    // 折叠是 miuix 内置行为（大标题 → 居中小标题），默认构造即可；
+    // 不要额外覆盖 snap / fling 动画参数，那只会改坏折叠手感。
+    val scrollBehavior = MiuixScrollBehavior()
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val systemNavBarsHeight = with(density) {
@@ -213,11 +215,19 @@ fun AboutScreen(onBack: () -> Unit) {
                 .fillMaxSize()
                 .background(MiuixTheme.colorScheme.background)
         ) {
-            // 呼吸渐变背景层（贴在内容之下）
+            // 呼吸渐变背景层（贴在内容之下）。
+            // 渐变是卡片与页面底色的区分来源：以前滚动到底时 alpha 归零，只剩主题底色，
+            // 而 miuix 的 Card 用 surface 色、与 background 几乎同色，卡片就整片糊进背景里。
+            // 所以这里给渐变留一个下限，滚动到底仍保留一层淡渐变。
+            val gradientAlpha = if (darkTheme) {
+                0.34f + 0.16f * (1f - scrollFraction)
+            } else {
+                0.55f + 0.45f * (1f - scrollFraction)
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer { alpha = (1f - scrollFraction) * (if (darkTheme) 0.5f else 1f) }
+                    .graphicsLayer { alpha = gradientAlpha }
                     .background(if (darkTheme) darkGradient else lightGradient)
                     .zIndex(-1f)
             )
@@ -682,20 +692,40 @@ fun AboutScreen(onBack: () -> Unit) {
                             )
                             Button(
                                 onClick = {
+                                    // 直接用 release assets 里那个 apk 的真实下载地址。
+                                    // 以前这里按 "app-${abi}-release.apk" 拼 URL，与 CI 实际
+                                    // 产出的文件名对不上，下载必然 404，只能静默退回浏览器。
+                                    val assetUrl = result.apkDownloadUrl
+                                    if (assetUrl.isBlank()) {
+                                        context.startActivity(
+                                            android.content.Intent(
+                                                android.content.Intent.ACTION_VIEW,
+                                                android.net.Uri.parse(result.releaseUrl)
+                                            )
+                                        )
+                                        showUpdateDialog = false
+                                        return@Button
+                                    }
                                     downloadingApk = true
                                     downloadProgress = 0
                                     downloadedBytes = 0L
                                     totalBytes = 0L
-                                    val downloadUrl = ApkDownloader.constructDownloadUrl(result.latestVersionName, context)
-                                    scope.launch(Dispatchers.IO) {
-                                        val downloadResult = ApkDownloader.downloadAndInstall(
-                                            context,
-                                            downloadUrl,
-                                            result.latestVersionName
-                                        ) { progress, downloaded, total ->
-                                            downloadProgress = progress
-                                            downloadedBytes = downloaded
-                                            totalBytes = total
+                                    // 下载在 IO 线程，结果与状态写回主协程上下文（scope 绑定的 Main）
+                                    scope.launch {
+                                        val downloadResult = withContext(Dispatchers.IO) {
+                                            ApkDownloader.downloadAndInstall(
+                                                context,
+                                                assetUrl,
+                                                result.latestVersionName
+                                            ) { progress, downloaded, total ->
+                                                // 回调在 IO 线程，Compose state 必须回主线程写
+                                                Handler(Looper.getMainLooper()).post {
+                                                    if (!downloadingApk) return@post
+                                                    downloadProgress = progress
+                                                    downloadedBytes = downloaded
+                                                    totalBytes = total
+                                                }
+                                            }
                                         }
                                         downloadingApk = false
                                         if (downloadResult.isFailure) {

@@ -23,8 +23,8 @@ android {
         applicationId "com.kira.jarplay"
         minSdk MIN_SDK
         targetSdk TARGET_SDK
-        versionCode 4
-        versionName "1.0.3"
+        versionCode 5
+        versionName "1.0.4"
         vectorDrawables.useSupportLibrary = true
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -86,7 +86,6 @@ android {
             buildConfigField 'boolean', 'FULL_EMULATOR', 'true'
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
                     'proguard-rules.pro', 'proguard-common.pro'
-            versionNameSuffix "-open"
         }
         fdroid {
             buildConfigField 'boolean', 'FULL_EMULATOR', 'true'
