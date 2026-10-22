@@ -100,7 +100,7 @@ jobs:
 
       - name: 编译 openRelease APK（增量优先）
         run: |
-          ./gradlew :app:assembleOpenRelease --build-cache --console=plain
+          ./gradlew :app:assembleOpenRelease --build-cache --console=plain --stacktrace
 
       - name: 列出产物
         run: ls -lh app/build/outputs/apk/open/release/
