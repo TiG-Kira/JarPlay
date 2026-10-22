@@ -42,7 +42,8 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
+          # release 事件：检出 tag 对应提交；手动 dispatch：检出默认分支最新代码（tag 仅用于上传目标）
+          ref: ${{ github.event.release.tag_name || github.ref }}
 
       - name: 设置 JDK 21
         uses: actions/setup-java@v4
