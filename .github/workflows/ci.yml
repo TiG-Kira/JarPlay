@@ -43,6 +43,11 @@ jobs:
           echo "--- 诊断 ---"
           cat "$SDK/platforms/android-37/source.properties"
           ls "$SDK/platforms"
+          echo "--- package.xml 指纹（应为 f7f1ac6d 开头，与本地成功环境一致）---"
+          sha256sum "$SDK/platforms/android-37/package.xml"
+          head -c 400 "$SDK/platforms/android-37/package.xml"; echo
+          echo "--- ANDROID 相关环境变量 ---"
+          env | grep -iE '^ANDROID' || true
 
       - name: 缓存 Gradle 依赖
         uses: actions/cache@v4
@@ -54,8 +59,13 @@ jobs:
           restore-keys: gradle-win-
 
       - name: 编译 openDebug APK（冒烟）
+        shell: bash
         run: |
-          ./gradlew :app:assembleOpenDebug --build-cache --console=plain
+          set -e
+          # runner 可能预置 ANDROID_NDK* 指向另一套 SDK/NDK，清掉再构建
+          unset ANDROID_NDK ANDROID_NDK_HOME ANDROID_NDK_ROOT ANDROID_NDK_LATEST_HOME 2>/dev/null || true
+          ./gradlew --version
+          ./gradlew :app:assembleOpenDebug --build-cache --console=plain --stacktrace --info
 
       - name: 上传 Debug APK 产物
         uses: actions/upload-artifact@v4
