@@ -55,7 +55,9 @@ jobs:
           if [ ! -d "$ANDROID_HOME/platforms/android-37" ]; then
             echo "::warning::canary 通道无 android-37，复制 android-37.0 为 android-37 以满足 AGP"
             cp -a "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
-            rm -f "$ANDROID_HOME/platforms/android-37/package.xml"
+            # 把副本 package.xml 的 localPackage path 改为 android-37，避免旧式扫描判定 location 不一致而拒收
+            sed -i 's|<localPackage path="platforms;android-37.0"|<localPackage path="platforms;android-37"|' \
+              "$ANDROID_HOME/platforms/android-37/package.xml"
           fi
 
       - name: 缓存 Gradle 依赖
