@@ -55,6 +55,7 @@ jobs:
           if [ ! -d "$ANDROID_HOME/platforms/android-37" ]; then
             echo "::warning::canary 通道无 android-37，复制 android-37.0 为 android-37 以满足 AGP"
             cp -a "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+            rm -f "$ANDROID_HOME/platforms/android-37/package.xml"
           fi
 
       - name: 缓存 Gradle 依赖
