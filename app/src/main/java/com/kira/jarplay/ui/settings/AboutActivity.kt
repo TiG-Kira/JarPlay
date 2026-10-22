@@ -118,7 +118,10 @@ fun AboutScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     // 本页在主界面取景层之外，自建一层供玻璃顶栏折射页面内容
     val glassPage = rememberGlassPageBackdrop()
-    val scrollBehavior = MiuixScrollBehavior()
+    // 显式 canScroll = { true }：miuix 0.9.4 的 MiuixScrollBehavior 默认值不会真正跟踪滚动，
+    // 不指定会导致玻璃顶栏的 material 在滚动后不浮现（折叠失效）。
+    val canScrollAlways: () -> Boolean = remember { { true } }
+    val scrollBehavior = MiuixScrollBehavior(canScroll = canScrollAlways)
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val systemNavBarsHeight = with(density) {
@@ -429,8 +432,10 @@ fun AboutScreen(onBack: () -> Unit) {
                         ) {
                             ArrowPreference(
                                 title = stringResource(R.string.check_updates),
+                                // 默认副标题应是本项自己的描述；此前误用 about_message（应用简介），
+                                // 导致“检查更新”一栏显示成整段应用介绍。
                                 summary = updateSummary
-                                    ?: stringResource(R.string.about_message),
+                                    ?: stringResource(R.string.about_check_updates_desc),
                                 onClick = {
                                     if (!checkingUpdate) {
                                         checkingUpdate = true
@@ -561,7 +566,7 @@ fun AboutScreen(onBack: () -> Unit) {
                 title = when (result) {
                     is UpdateResult.UpdateAvailable -> if (result.isBeta) stringResource(R.string.beta_version_available) else stringResource(R.string.new_version_found)
                     is UpdateResult.UpToDate -> stringResource(R.string.up_to_date)
-                    is UpdateResult.CheckFailed -> stringResource(R.string.up_to_date)
+                    is UpdateResult.CheckFailed -> stringResource(R.string.check_failed)
                 },
                 summary = when (result) {
                     is UpdateResult.UpdateAvailable -> {
@@ -572,7 +577,7 @@ fun AboutScreen(onBack: () -> Unit) {
                         "${stringResource(R.string.is_latest)} ${result.currentVersionName}"
                     }
                     is UpdateResult.CheckFailed -> {
-                        stringResource(R.string.up_to_date)
+                        stringResource(R.string.check_failed)
                     }
                 },
                 onDismissRequest = { showUpdateDialog = false },

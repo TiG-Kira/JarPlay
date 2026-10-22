@@ -10,12 +10,15 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.rememberSplineBasedDecay
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +45,7 @@ import com.kira.jarplay.util.FileUtils
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.TopAppBarState
 import top.yukonga.miuix.kmp.blur.layerBackdrop as miuixLayerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop as rememberMiuixLayerBackdrop
 import top.yukonga.miuix.kmp.glass.GlassIconButton
@@ -99,7 +103,23 @@ fun MainContent(
     )
     val icons = listOf(MiuixIcons.VerticalSplit, MiuixIcons.Settings)
 
-    val scrollBehavior = MiuixScrollBehavior()
+    // 顶栏折叠依赖嵌套滚动把内容位移喂给 scrollBehavior.state.contentOffset；
+    // miuix 0.9.4 的 MiuixScrollBehavior 默认值不会真正跟踪滚动（canScroll 默认不生效），
+    // 必须显式 canScroll = { true } 才能驱动 GlassTopAppBar 折叠（对齐 KiTerminal-UX）。
+    // canScroll / snap / fling 都用 remember 固定实例，避免每次重组重建 ScrollBehavior
+    // 导致 nestedScroll 连接与吸顶 snap 动画被打断（表现为“吸顶后小标题间歇性消失”）。
+    val canScrollAlways: () -> Boolean = remember { { true } }
+    val snapSpec = remember { spring<Float>(stiffness = 2500f) }
+    val flingSpec = rememberSplineBasedDecay<Float>()
+    val topAppBarState = remember(selectedTab) { TopAppBarState(0f, 0f, 0f) }
+    // MiuixScrollBehavior 是 @Composable 工厂，必须直接在组合体内调用（不能包进 remember{} 的 lambda）。
+    // 稳定性由下面这几个被 remember 固定的参数保证，工厂内部会按它们做记忆。
+    val scrollBehavior = MiuixScrollBehavior(
+        state = topAppBarState,
+        canScroll = canScrollAlways,
+        snapAnimationSpec = snapSpec,
+        flingAnimationSpec = flingSpec,
+    )
 
     // 隐藏手势提示线（小白条）后 navigationBars inset 上报为 0，底栏会贴死屏幕底边；
     // 保底 12dp 仅在 inset 不足时生效（同 KiTerminal-UX）。
@@ -184,9 +204,12 @@ fun MainContent(
             Box(modifier = Modifier.fillMaxSize()) {
                 // 内容层（带玻璃取景）：不做任何 padding——内容从顶栏与底栏下穿过，
                 // 玻璃条才有东西可折射；首屏留白由页面自己的 contentPadding 提供。
+                // 必须铺一层不透明的主题底色：玻璃条折射的是这个取景层，若内容透明，
+                // 导航栏下方（无内容区域）会折射到窗口底色，呈现用户看到的“深色板块”。
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .background(MiuixTheme.colorScheme.background)
                         .miuixLayerBackdrop(glassBackdrop)
                 ) {
                     when (selectedTab) {

@@ -9,7 +9,7 @@
     <string name="licenses">许可</string>
     <string name="profiles">配置文件</string>
     <string name="save_log">保存日志</string>
-    <string name="about_message">此应用允许您在 Android 上启动 J2ME 应用和游戏。它支持大多数 2D 和 3D 游戏(包括 Mascot Capsule 3D 游戏)。&lt;BR&gt;</string>
+    <string name="about_message">此应用允许您在 Android 上启动 J2ME 应用和游戏。它支持大多数 2D 和 3D 游戏(包括 Mascot Capsule 3D 游戏)。</string>
     <string name="help_message">&#8226; 在某些情况下启用过滤可能大大降低性能。如果游戏太慢，请禁用此选项。&lt;BR&gt;&#8226;通过启用 \"立即处理模式\" 选项，可以修复图像闪烁问题。</string>
     <string name="author">作者: </string>
     <string name="version">版本: </string>
@@ -321,4 +321,27 @@
     <string name="beta_warning_title">启用 Beta 更新？</string>
     <string name="beta_warning_confirm">启用</string>
     <string name="beta_warning_cancel">取消</string>
+
+    <!-- 以下为原先缺失中文翻译、在中文界面下仍显示英文的关于页/更新相关字符串 -->
+    <string name="check_updates">检查更新</string>
+    <string name="new_version_available">新版本可用</string>
+    <string name="beta_version_available">Beta 版本可用</string>
+    <string name="license_info">JarPlay 基于 Nikita Shakarun 的 J2ME Loader，以 GPL 3.0 许可证发布。</string>
+    <string name="enable_beta_update_desc">检查更新时包含预发布版本</string>
+    <string name="beta_warning_message">Beta 版本包含开发中的实验性改动与未完成的功能，您可能会遇到崩溃、不稳定或数据丢失。请勿在生产环境中使用 Beta 版本，发现问题请在 GitHub 反馈。</string>
+    <string name="download">下载</string>
+    <string name="ok">确定</string>
+    <string name="check_failed">检查更新失败，请稍后重试。</string>
+    <string name="up_to_date">已是最新</string>
+    <string name="app_deleted">应用已删除</string>
+    <string name="edit_keyboard">编辑键盘</string>
+    <string name="exit_edit_mode">退出编辑模式</string>
+    <string name="error_no_picker">请安装一个文件选择器应用</string>
+    <string name="show">显示</string>
+    <string name="download_failed">下载失败</string>
+    <string name="install_failed">安装失败</string>
+    <string name="response_body_empty">响应内容为空</string>
+    <string name="apk_download_failed">APK 文件下载失败</string>
+    <string name="request_install_permission_failed">无法打开安装设置</string>
+    <string name="download_failed_with_code">下载失败，错误码：%1$d</string>
 </resources>

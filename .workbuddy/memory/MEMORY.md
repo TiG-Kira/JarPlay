@@ -37,9 +37,27 @@ J2ME Loader 的 Android 分支（作者 TiG-Kira），基于上游 `nikita36078/
 - **依赖**：`miuix-blur-android:0.9.4` + `io.github.kyant0:backdrop-android:2.0.1` +
   `io.github.kyant0:shapes-android:1.2.1`（kyant0 两个都要 exclude JetBrains Compose 传递依赖）；
   `resolutionStrategy.force miuix-ui-android:0.9.4`。`navigationevent` 用 `1.1.2`(compose-android 变体)。
-- **不要**把 glass 包的 Popup 系列/`GlassTopAppBar`/`GlassSurface`/`GlassTabRow` 加回来：
-  miuix-ui 0.9.4 不含 `BlurTopAppBar`/`CascadingPopupDefaults`，会编译失败。要用玻璃顶栏只能等
-  miuix-ui 升级或自己补这几个符号。
+- **玻璃组件家族已补全（2026-10-22，v1.0.2）**：GlassTopAppBar/GlassIconButton/BlurTopAppBar
+  (basic/)/glass popup 全家族/layout/CascadingPopupDefaults/icon.glass 均已从 KiTerminal-UX vendor
+  （此前「miuix-ui 0.9.4 缺 BlurTopAppBar/CascadingPopupDefaults 不能加顶栏」的结论错误——那两个
+  符号 KiTerminal 一直在自己 app 源码里 vendor）。folmeSpring/TopAppBarState.Saver 是 miuix-ui
+  0.9.4 自带的。GlassPageHost 在 `com.kira.jarplay.ui.glass`。
+- **玻璃条宿主铁律**：内容层（layerBackdrop 注册处）绝不能加 bottom padding——会把取景区掏空，
+  玻璃折射不到内容（底板像没渲染、无穿过感）；首屏留白必须放**滚动 contentPadding**（页面带
+  topClearance/bottomClearance 参数），不能放页面根 padding。顶栏/底栏共用同一 backdrop。
+- `calculateTopPadding` 是 PaddingValues 成员函数（写 import 会编译错）；calculateStart/EndPadding
+  是顶层扩展。
+- **不要**把 glass 包的 GlassSurface/GlassTabRow 加回来（未 vendor、未验证）；要用先从 KiTerminal-UX
+  拷并确认依赖闭包。
+- **玻璃取景层必须铺不透明主题底色**（2026-10-23，v1.0.3）：`MainActivity` 内容层 Box 必须
+  `.background(MiuixTheme.colorScheme.background)` **再** `.miuixLayerBackdrop(backdrop)`。
+  不铺的话底栏下方空白区折射到窗口底色，会渲染出中灰「深色板块」（实测 #5f5f5f）。
+  （KiTerminal 靠 Scaffold containerColor 兜底，JarPlay 结构不同，必须显式铺。）
+- **顶栏折叠靠 `MiuixScrollBehavior(canScroll = { true })`**（2026-10-23）：miuix 0.9.4 默认值
+  不跟踪滚动，不显式传 `canScroll` 顶栏永远不折叠。`MiuixScrollBehavior` 是 **@Composable 工厂**，
+  不能包进 `remember { }`（编译直接报错）；稳定性靠 `remember` 固定
+  `canScroll`/`snapAnimationSpec`/`flingAnimationSpec`/`TopAppBarState` 这几个参数。
+  参数变化时顶栏标题会从大标题（左侧 139px）折叠为居中 toolbar 标题（87px）。
 - Manifest 必须 `tools:overrideLibrary="top.yukonga.miuix.kmp.blur"`（miuix-blur 声明 minSdk 33，
   JarPlay minSdk 24；老设备靠 `isRuntimeShaderSupported` 运行时降级，玻璃效果不渲染但不崩）。
 
