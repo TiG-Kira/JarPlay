@@ -196,25 +196,22 @@ androidComponents {
 
                     def tmpFile = new File(soFile.parentFile, soFile.name + ".16k")
                     try {
-                        def stdout = new ByteArrayOutputStream()
-                        def stderr = new ByteArrayOutputStream()
-                        exec {
-                            executable llvmAlign
-                            if (llvmAlign.contains("llvm-align")) {
-                                args ["--value=16384", soFile.absolutePath, tmpFile.absolutePath]
-                            } else {
-                                args ["-z", "max-page-size=16384", soFile.absolutePath, tmpFile.absolutePath]
-                            }
-                            standardOutput = stdout
-                            errorOutput = stderr
-                            ignoreExitValue = true
+                        // Gradle 9.x 移除了 Project.exec(Closure)，改用 ProcessBuilder
+                        def cmdArgs = [llvmAlign.toString()]
+                        if (llvmAlign.contains("llvm-align")) {
+                            cmdArgs += ["--value=16384", soFile.absolutePath, tmpFile.absolutePath]
+                        } else {
+                            cmdArgs += ["-z", "max-page-size=16384", soFile.absolutePath, tmpFile.absolutePath]
                         }
-                        if (tmpFile.exists() && tmpFile.length() > 0) {
+                        def proc = new ProcessBuilder(cmdArgs).redirectErrorStream(true).start()
+                        proc.inputStream.text // 排空输出避免管道阻塞
+                        def exitCode = proc.waitFor()
+                        if (exitCode == 0 && tmpFile.exists() && tmpFile.length() > 0) {
                             soFile.delete()
                             tmpFile.renameTo(soFile)
                             realignedCount++
                         } else {
-                            logger.warn("Failed to realign ${soFile.name}: ${stderr.toString()}")
+                            logger.warn("Failed to realign ${soFile.name}: exit=${exitCode}")
                             if (tmpFile.exists()) tmpFile.delete()
                             skippedCount++
                         }
