@@ -34,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.kira.jarplay.R
@@ -56,7 +57,12 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 
 @Composable
-fun AppsScreen(appListModel: AppListModel, scrollBehavior: ScrollBehavior? = null) {
+fun AppsScreen(
+    appListModel: AppListModel,
+    scrollBehavior: ScrollBehavior? = null,
+    topClearance: Dp = 0.dp,
+    bottomClearance: Dp = 0.dp,
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var apps by remember { mutableStateOf<List<AppItem>>(emptyList()) }
@@ -85,7 +91,12 @@ fun AppsScreen(appListModel: AppListModel, scrollBehavior: ScrollBehavior? = nul
                         Modifier
                     }
                 ),
-            contentPadding = PaddingValues(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 96.dp),
+            contentPadding = PaddingValues(
+                start = 12.dp,
+                top = 8.dp + topClearance,
+                end = 12.dp,
+                bottom = 24.dp + bottomClearance,
+            ),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(apps, key = { it.id }) { appItem ->

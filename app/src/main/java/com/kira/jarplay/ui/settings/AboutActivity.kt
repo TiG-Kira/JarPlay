@@ -86,13 +86,18 @@ import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.glass.GlassIconButton
+import top.yukonga.miuix.kmp.glass.GlassTopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.basic.ArrowRight
-import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Add
+import top.yukonga.miuix.kmp.icon.glass.ChevronBackward
+import top.yukonga.miuix.kmp.icon.glass.MiuixGlassIcons
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import com.kira.jarplay.ui.glass.rememberGlassPageBackdrop
+import com.kira.jarplay.ui.glass.standaloneContentPadding
 
 private const val PREF_UPDATE = "update_preferences"
 private const val KEY_ENABLE_BETA = "enable_beta_update"
@@ -111,6 +116,8 @@ class AboutActivity : ComponentActivity() {
 @Composable
 fun AboutScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    // 本页在主界面取景层之外，自建一层供玻璃顶栏折射页面内容
+    val glassPage = rememberGlassPageBackdrop()
     val scrollBehavior = MiuixScrollBehavior()
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -217,19 +224,14 @@ fun AboutScreen(onBack: () -> Unit) {
                 containerColor = Color.Transparent,
                 contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 topBar = {
-                    TopAppBar(
+                    GlassTopAppBar(
                         title = stringResource(R.string.action_about),
+                        backdrop = glassPage.backdrop,
                         scrollBehavior = scrollBehavior,
                         navigationIcon = {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .clickable { onBack() },
-                                contentAlignment = Alignment.Center
-                            ) {
+                            GlassIconButton(onClick = onBack) {
                                 Icon(
-                                    imageVector = MiuixIcons.Back,
+                                    imageVector = MiuixGlassIcons.ChevronBackward,
                                     contentDescription = stringResource(R.string.close),
                                     tint = MiuixTheme.colorScheme.onSurface,
                                     modifier = Modifier.size(24.dp)
@@ -242,10 +244,11 @@ fun AboutScreen(onBack: () -> Unit) {
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
+                        .then(glassPage.contentModifier)
                         .fillMaxSize()
                         .nestedScroll(scrollBehavior.nestedScrollConnection),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        top = paddingValues.calculateTopPadding(),
+                    contentPadding = standaloneContentPadding(
+                        paddingValues,
                         bottom = systemNavBarsHeight + 26.dp
                     ),
                     verticalArrangement = Arrangement.Top
@@ -254,49 +257,67 @@ fun AboutScreen(onBack: () -> Unit) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .graphicsLayer { alpha = headerAlphaAnim }
+                                .graphicsLayer { alpha = 1f - scrollFraction }
                                 .padding(top = 60.dp, bottom = 30.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            val appIcon = remember {
-                                ContextCompat.getDrawable(context, R.mipmap.ic_launcher)
-                                    ?.toBitmap()
-                                    ?.asImageBitmap()
-                                    ?.let { BitmapPainter(it) }
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.Black),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (appIcon != null) {
-                                    Image(
-                                        painter = appIcon,
-                                        contentDescription = "Logo",
-                                        modifier = Modifier.size(64.dp)
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = MiuixIcons.Basic.ArrowRight,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(44.dp),
-                                        tint = Color.White
-                                    )
+                            // 头部前景色随主题；logo 白色像素透出渐变背景，其余染成同色
+                            val headerFg = if (darkTheme) Color.White else Color(0xFF333333)
+                            val fgInt = android.graphics.Color.argb(
+                                (headerFg.alpha * 255).toInt(),
+                                (headerFg.red * 255).toInt(),
+                                (headerFg.green * 255).toInt(),
+                                (headerFg.blue * 255).toInt()
+                            )
+                            val appIcon = remember(darkTheme) {
+                                ContextCompat.getDrawable(context, R.mipmap.ic_launcher)?.toBitmap()?.let { bm ->
+                                    val copy = bm.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
+                                    val pixels = IntArray(copy.width * copy.height)
+                                    copy.getPixels(pixels, 0, copy.width, 0, 0, copy.width, copy.height)
+                                    for (i in pixels.indices) {
+                                        val c = pixels[i]
+                                        val r = (c shr 16) and 0xFF
+                                        val g = (c shr 8) and 0xFF
+                                        val b = c and 0xFF
+                                        val a = (c shr 24) and 0xFF
+                                        val brightness = (r + g + b) / 3f
+                                        if (a > 128 && brightness > 180f) {
+                                            // 白色像素 → 透明，让渐变背景透出
+                                            pixels[i] = 0x00000000
+                                        } else if (a > 128) {
+                                            // 其余非透明像素 → 染成与文字同色
+                                            pixels[i] = fgInt
+                                        }
+                                    }
+                                    copy.setPixels(pixels, 0, copy.width, 0, 0, copy.width, copy.height)
+                                    BitmapPainter(copy.asImageBitmap())
                                 }
                             }
-                            Spacer(modifier = Modifier.height(16.dp))
+                            if (appIcon != null) {
+                                Image(
+                                    painter = appIcon,
+                                    contentDescription = "Logo",
+                                    modifier = Modifier.size(100.dp)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = MiuixIcons.Add,
+                                    contentDescription = "Logo",
+                                    modifier = Modifier.size(60.dp),
+                                    tint = headerFg
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(20.dp))
                             Text(
                                 text = stringResource(R.string.app_name_full),
                                 style = TextStyle(
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MiuixTheme.colorScheme.onSurface
+                                    fontSize = 36.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = headerFg
                                 )
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -304,8 +325,8 @@ fun AboutScreen(onBack: () -> Unit) {
                                 Text(
                                     text = currentVersion,
                                     style = TextStyle(
-                                        fontSize = 14.sp,
-                                        color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                        fontSize = 16.sp,
+                                        color = headerFg
                                     )
                                 )
                                 if (releaseStatus == UpdateChecker.ReleaseStatus.PRERELEASE) {
@@ -356,29 +377,21 @@ fun AboutScreen(onBack: () -> Unit) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
-                                .clip(RoundedCornerShape(20.dp))
-                                .clickable {
+                        ) {
+                            ArrowPreference(
+                                title = stringResource(R.string.developer_name),
+                                summary = "@TiG-Kira",
+                                onClick = {
                                     val intent = android.content.Intent(
                                         android.content.Intent.ACTION_VIEW,
                                         android.net.Uri.parse("https://github.com/TiG-Kira/JarPlay")
                                     )
                                     context.startActivity(intent)
-                                }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
+                                },
+                                startAction = {
                                     Box(
                                         modifier = Modifier
-                                            .size(48.dp)
+                                            .size(40.dp)
                                             .clip(CircleShape)
                                             .background(MiuixTheme.colorScheme.surfaceVariant),
                                         contentAlignment = Alignment.Center
@@ -386,36 +399,11 @@ fun AboutScreen(onBack: () -> Unit) {
                                         AsyncImage(
                                             model = "https://github.com/TiG-Kira.png",
                                             contentDescription = "Developer Avatar",
-                                            modifier = Modifier.size(48.dp)
-                                        )
-                                    }
-                                    Column(
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
-                                        Text(
-                                            text = stringResource(R.string.developer_name),
-                                            style = TextStyle(
-                                                fontSize = 16.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MiuixTheme.colorScheme.onSurface
-                                            )
-                                        )
-                                        Text(
-                                            text = "@TiG-Kira",
-                                            style = TextStyle(
-                                                fontSize = 13.sp,
-                                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary
-                                            )
+                                            modifier = Modifier.size(40.dp)
                                         )
                                     }
                                 }
-                                Icon(
-                                    imageVector = MiuixIcons.Basic.ArrowRight,
-                                    contentDescription = stringResource(R.string.arrow),
-                                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
+                            )
                         }
                     }
 
@@ -424,12 +412,26 @@ fun AboutScreen(onBack: () -> Unit) {
                     }
 
                     item {
+                        val updateSummary = when {
+                            checkingUpdate -> stringResource(R.string.checking_updates)
+                            updateResult is UpdateResult.UpdateAvailable -> {
+                                val available = updateResult as UpdateResult.UpdateAvailable
+                                if (available.isBeta) stringResource(R.string.beta_version_available)
+                                else stringResource(R.string.new_version_available)
+                            }
+                            updateResult is UpdateResult.UpToDate -> stringResource(R.string.up_to_date)
+                            else -> null
+                        }
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
-                                .clip(RoundedCornerShape(20.dp))
-                                .clickable {
+                        ) {
+                            ArrowPreference(
+                                title = stringResource(R.string.check_updates),
+                                summary = updateSummary
+                                    ?: stringResource(R.string.about_message),
+                                onClick = {
                                     if (!checkingUpdate) {
                                         checkingUpdate = true
                                         scope.launch {
@@ -439,52 +441,7 @@ fun AboutScreen(onBack: () -> Unit) {
                                         }
                                     }
                                 }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    if (checkingUpdate) {
-                                        androidx.compose.material3.CircularProgressIndicator(
-                                            modifier = Modifier.size(16.dp),
-                                            strokeWidth = 2.dp
-                                        )
-                                    }
-                                    Column {
-                                        Text(
-                                            text = stringResource(R.string.check_updates),
-                                            style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                                        )
-                                        val hasUpdate = updateResult is UpdateResult.UpdateAvailable
-                                        if (hasUpdate) {
-                                            val available = updateResult as UpdateResult.UpdateAvailable
-                                            Text(
-                                                text = if (available.isBeta)
-                                                    stringResource(R.string.beta_version_available)
-                                                else
-                                                    stringResource(R.string.new_version_available),
-                                                style = TextStyle(
-                                                    fontSize = 13.sp,
-                                                    color = MiuixTheme.colorScheme.error
-                                                )
-                                            )
-                                        }
-                                    }
-                                }
-                                Icon(
-                                    imageVector = MiuixIcons.Basic.ArrowRight,
-                                    contentDescription = stringResource(R.string.arrow),
-                                    tint = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
+                            )
                         }
                     }
 

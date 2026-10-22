@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,18 +35,19 @@ import com.kira.jarplay.applist.AppListModel
 import com.kira.jarplay.installer.InstallerOverlay
 import com.kira.jarplay.installer.InstallerState
 import com.kira.jarplay.ui.apps.AppsScreen
+import com.kira.jarplay.ui.glass.LocalGlassTopAppBarBackdrop
 import com.kira.jarplay.ui.settings.SettingsScreen
 import com.kira.jarplay.ui.theme.JarPlayTheme
 import com.kira.jarplay.util.FileUtils
-import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.blur.layerBackdrop as miuixLayerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop as rememberMiuixLayerBackdrop
+import top.yukonga.miuix.kmp.glass.GlassIconButton
 import top.yukonga.miuix.kmp.glass.GlassNavigationBar
 import top.yukonga.miuix.kmp.glass.GlassNavigationItem
+import top.yukonga.miuix.kmp.glass.GlassTopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.Settings
@@ -99,8 +101,10 @@ fun MainContent(
 
     val scrollBehavior = MiuixScrollBehavior()
 
+    // 隐藏手势提示线（小白条）后 navigationBars inset 上报为 0，底栏会贴死屏幕底边；
+    // 保底 12dp 仅在 inset 不足时生效（同 KiTerminal-UX）。
     val systemNavBarsHeight = with(density) {
-        WindowInsets.navigationBars.getBottom(density).toDp()
+        maxOf(WindowInsets.navigationBars.getBottom(density), 12.dp.roundToPx()).toDp()
     }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
@@ -137,8 +141,8 @@ fun MainContent(
         }
     }
 
-    // 浮动玻璃导航栏的取景层：内容通过 miuixLayerBackdrop 折射给底栏。
-    val glassNavBackdrop = rememberMiuixLayerBackdrop()
+    // 玻璃顶栏与底栏共用的取景层：内容通过 miuixLayerBackdrop 折射给两根玻璃条。
+    val glassBackdrop = rememberMiuixLayerBackdrop()
 
     // Miuix 组件（TopAppBar 返回手势 / OverlayDialog 等）需要 NavigationEventDispatcher。
     val navigationEventDispatcher = remember { NavigationEventDispatcher() }
@@ -148,30 +152,55 @@ fun MainContent(
         }
     }
 
-    CompositionLocalProvider(LocalNavigationEventDispatcherOwner provides navigationEventDispatcherOwner) {
+    CompositionLocalProvider(
+        LocalNavigationEventDispatcherOwner provides navigationEventDispatcherOwner,
+        LocalGlassTopAppBarBackdrop provides glassBackdrop,
+    ) {
         Scaffold(
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
-                TopAppBar(
+                GlassTopAppBar(
                     title = labels[selectedTab],
                     scrollBehavior = scrollBehavior,
+                    backdrop = glassBackdrop,
+                    actions = {
+                        if (selectedTab == 0) {
+                            GlassIconButton(onClick = {
+                                // JAR/JAD 的 MIME 类型并不统一，交给系统选择器自己过滤更可靠
+                                filePickerLauncher.launch("*/*")
+                            }) {
+                                Icon(
+                                    imageVector = MiuixIcons.Add,
+                                    contentDescription = stringResource(R.string.install_app),
+                                    tint = MiuixTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(24.dp),
+                                )
+                            }
+                        }
+                    },
                 )
             },
         ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                // 内容层（带玻璃取景）：底部预留 72.dp 给浮动导航栏，避免被遮挡。
+            Box(modifier = Modifier.fillMaxSize()) {
+                // 内容层（带玻璃取景）：不做任何 padding——内容从顶栏与底栏下穿过，
+                // 玻璃条才有东西可折射；首屏留白由页面自己的 contentPadding 提供。
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .miuixLayerBackdrop(glassNavBackdrop)
-                        .padding(bottom = 72.dp + systemNavBarsHeight)
+                        .miuixLayerBackdrop(glassBackdrop)
                 ) {
                     when (selectedTab) {
-                        0 -> AppsScreen(appListModel = appListModel, scrollBehavior = scrollBehavior)
-                        1 -> SettingsScreen(scrollBehavior = scrollBehavior)
+                        0 -> AppsScreen(
+                            appListModel = appListModel,
+                            scrollBehavior = scrollBehavior,
+                            topClearance = innerPadding.calculateTopPadding(),
+                            bottomClearance = GlassNavTotalHeight + systemNavBarsHeight,
+                        )
+                        1 -> SettingsScreen(
+                            scrollBehavior = scrollBehavior,
+                            topClearance = innerPadding.calculateTopPadding(),
+                            bottomClearance = GlassNavTotalHeight + systemNavBarsHeight,
+                        )
                     }
 
                     InstallerOverlay(
@@ -190,30 +219,15 @@ fun MainContent(
                     },
                     selectedIndex = selectedTab,
                     onSelect = { index -> selectedTab = index },
-                    backdrop = glassNavBackdrop,
+                    backdrop = glassBackdrop,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(start = 24.dp, end = 24.dp, bottom = systemNavBarsHeight),
                 )
-
-                // 安装按钮（仅应用列表页），抬到导航栏上方。
-                if (selectedTab == 0) {
-                    FloatingActionButton(
-                        onClick = {
-                            // JAR/JAD 的 MIME 类型并不统一，交给系统选择器自己过滤更可靠
-                            filePickerLauncher.launch("*/*")
-                        },
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 16.dp, bottom = 72.dp + systemNavBarsHeight),
-                    ) {
-                        Icon(
-                            imageVector = MiuixIcons.Add,
-                            contentDescription = stringResource(R.string.install_app),
-                        )
-                    }
-                }
             }
         }
     }
 }
+
+/** 浮动玻璃导航栏自身高度（GlassNavigationBarDefaults.Height）。 */
+val GlassNavTotalHeight = 54.dp

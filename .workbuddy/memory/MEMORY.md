@@ -43,15 +43,27 @@ J2ME Loader 的 Android 分支（作者 TiG-Kira），基于上游 `nikita36078/
 - Manifest 必须 `tools:overrideLibrary="top.yukonga.miuix.kmp.blur"`（miuix-blur 声明 minSdk 33，
   JarPlay minSdk 24；老设备靠 `isRuntimeShaderSupported` 运行时降级，玻璃效果不渲染但不崩）。
 
-## CI / 签名（2026-10-22 引入）
-- Release 打包：`.github/workflows/release_apk.yml`（发布 Release 或手动触发 → 装 SDK/NDK → 解码
-  `JKS_BASE64` 到 `app/ki-terminal-release.jks` → `:app:assembleOpenRelease` → `gh release upload`）。
-- 调试冒烟：`.github/workflows/ci.yml`（push/PR 编 `:app:assembleOpenDebug`，无需 jks）。
-- 签名在 `app/build.gradle` 的 `signingConfigs.release`：`KEYSTORE_FILE`(默认本地绝对路径，CI 用相对)
+## CI / 签名（2026-10-22 引入并全绿）
+- **compileSdk 用 AGP 9 新 DSL**（根 build.gradle `COMPILE_SDK_MAJOR=37, COMPILE_SDK_MINOR=0`，
+  两模块 `compileSdk { version = release(37) { minorApiLevel = 0 } }`）→ AGP 按新命名
+  `android-37.0` 解析平台。**不要改回 `COMPILE_SDK = 37` 整数旧写法**——远端仓库只有
+  `platforms;android-37.0`，旧写法会重现 21 连败的 `Failed to find target with hash string 'android-37'`。
+- CI 装依赖：原生 `platforms;android-37.0` + platform-tools + build-tools;36.0.0 + ndk;22.1.7171670，
+  无任何 rename/伪造元数据 hack。
+- Release 打包：`.github/workflows/release_apk.yml`（发布 Release 或手动 `gh workflow run -f tag=vX.Y.Z`
+  → checkout 默认分支 → 装 SDK/NDK → 解码 `JKS_BASE64` 到 `app/ki-terminal-release.jks` →
+  `:app:assembleOpenRelease`（编译步 env `KEYSTORE_FILE=ki-terminal-release.jks`，相对 app 模块目录，
+  **不能带 app/ 前缀**）→ `gh release upload --clobber`）。已验证全绿并产出 CI 签名 APK。
+- 调试冒烟：`.github/workflows/ci.yml`（push/PR 编 `:app:assembleOpenDebug`，无需 jks）。已验证全绿。
+- 签名在 `app/build.gradle` 的 `signingConfigs.release`：`KEYSTORE_FILE`(默认本地绝对路径)
   + `KI_TERMINAL_STORE_PASSWORD/KEY_PASSWORD/KEY_ALIAS`（默认 `ki-terminal`）；**debug 用默认调试签名**。
 - **仓库需设 4 个 Secrets**：`JKS_BASE64`、`KI_TERMINAL_STORE_PASSWORD`、`KI_TERMINAL_KEY_PASSWORD`、
   `KI_TERMINAL_KEY_ALIAS`（口令/alias 均为 `ki-terminal`）。私钥绝不入库（`.gitignore` 已忽略 `*.jks`）。
-- `assembleOpenRelease` 已本地验证：产出 `JarPlay-openRelease.apk` 并签名（证书 CN=KiraStudio，V1/V2/V3 全过）。
+- 产物 `JarPlay-openRelease.apk`（CN=KiraStudio，V1/V2/V3 签名全过）。
+- 排障备忘：Windows runner 有双 SDK（`C:\Android\android-sdk` + 旧预装
+  `C:\Program Files (x86)\Android\android-sdk`）；AGP 平台解析问题先上 `--info` 日志。
+- app/build.gradle 的 16KB realign 任务里 `exec {}` 在 Gradle 9.7 会报
+  "Could not find method exec()"（被 catch 成 warn，SO 实际未对齐）——待改 `providers.exec`。
 
 ## 已知历史遗留（待清理，未动手）
 - 旧 Material/Fragment 体系仍在仓库里但已不可达：`com.kira.jarplay.MainActivity`(Java)、

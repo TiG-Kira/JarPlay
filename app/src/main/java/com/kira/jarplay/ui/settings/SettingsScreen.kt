@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.preference.PreferenceManager
 import com.kira.jarplay.BuildConfig
@@ -38,7 +39,11 @@ import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
-fun SettingsScreen(scrollBehavior: ScrollBehavior? = null) {
+fun SettingsScreen(
+    scrollBehavior: ScrollBehavior? = null,
+    topClearance: Dp = 0.dp,
+    bottomClearance: Dp = 0.dp,
+) {
     val context = LocalContext.current
     val preferences = remember(context) {
         PreferenceManager.getDefaultSharedPreferences(context)
@@ -66,7 +71,7 @@ fun SettingsScreen(scrollBehavior: ScrollBehavior? = null) {
                     Modifier
                 }
             ),
-        contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
+        contentPadding = PaddingValues(top = 8.dp + topClearance, bottom = 24.dp + bottomClearance),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         item {
