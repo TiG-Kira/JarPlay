@@ -10,7 +10,8 @@ task clean(type: Delete) {
 }
 
 ext {
-    COMPILE_SDK = 37
+    COMPILE_SDK_MAJOR = 37
+    COMPILE_SDK_MINOR = 0
     MIN_SDK = 24
     TARGET_SDK = 37
     NDK_VERSION = '22.1.7171670'

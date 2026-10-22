@@ -13,7 +13,9 @@ configurations.all {
 }
 
 android {
-    compileSdk COMPILE_SDK
+    compileSdk {
+        version = release(COMPILE_SDK_MAJOR) { minorApiLevel = COMPILE_SDK_MINOR }
+    }
     ndkVersion NDK_VERSION
     namespace 'com.kira.jarplay'
 
