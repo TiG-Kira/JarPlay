@@ -77,6 +77,9 @@ jobs:
           ls "$ANDROID_HOME" "$ANDROID_HOME/platforms"
           md5sum "$ANDROID_HOME/platforms/android-37/package.xml"
           env | grep -i android || true
+          cat "$ANDROID_HOME/platforms/android-37/source.properties"
+          grep -E "version.sdk" "$ANDROID_HOME/platforms/android-37/build.prop" || true
+          ls "$ANDROID_HOME/platform-tools" | head -3
       - name: 缓存 Gradle 依赖
         uses: actions/cache@v4
         with:
