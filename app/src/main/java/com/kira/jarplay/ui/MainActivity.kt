@@ -11,18 +11,24 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModelProvider
-import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.navigationevent.NavigationEventDispatcher
 import androidx.navigationevent.NavigationEventDispatcherOwner
+import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import com.kira.jarplay.R
 import com.kira.jarplay.applist.AppListModel
 import com.kira.jarplay.installer.InstallerOverlay
@@ -34,10 +40,12 @@ import com.kira.jarplay.util.FileUtils
 import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.NavigationBar
-import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.blur.layerBackdrop as miuixLayerBackdrop
+import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop as rememberMiuixLayerBackdrop
+import top.yukonga.miuix.kmp.glass.GlassNavigationBar
+import top.yukonga.miuix.kmp.glass.GlassNavigationItem
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.Settings
@@ -78,7 +86,8 @@ fun MainContent(
     installerState: InstallerState,
     appListModel: AppListModel
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
+    val density = LocalDensity.current
 
     var selectedTab by remember { mutableIntStateOf(0) }
 
@@ -89,6 +98,10 @@ fun MainContent(
     val icons = listOf(MiuixIcons.VerticalSplit, MiuixIcons.Settings)
 
     val scrollBehavior = MiuixScrollBehavior()
+
+    val systemNavBarsHeight = with(density) {
+        WindowInsets.navigationBars.getBottom(density).toDp()
+    }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -124,6 +137,10 @@ fun MainContent(
         }
     }
 
+    // 浮动玻璃导航栏的取景层：内容通过 miuixLayerBackdrop 折射给底栏。
+    val glassNavBackdrop = rememberMiuixLayerBackdrop()
+
+    // Miuix 组件（TopAppBar 返回手势 / OverlayDialog 等）需要 NavigationEventDispatcher。
     val navigationEventDispatcher = remember { NavigationEventDispatcher() }
     val navigationEventDispatcherOwner = remember {
         object : NavigationEventDispatcherOwner {
@@ -139,25 +156,56 @@ fun MainContent(
                     scrollBehavior = scrollBehavior,
                 )
             },
-            bottomBar = {
-                NavigationBar {
-                    labels.forEachIndexed { index, label ->
-                        NavigationBarItem(
-                            selected = selectedTab == index,
-                            onClick = { selectedTab = index },
-                            icon = icons[index],
-                            label = label,
-                        )
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                // 内容层（带玻璃取景）：底部预留 72.dp 给浮动导航栏，避免被遮挡。
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .miuixLayerBackdrop(glassNavBackdrop)
+                        .padding(bottom = 72.dp + systemNavBarsHeight)
+                ) {
+                    when (selectedTab) {
+                        0 -> AppsScreen(appListModel = appListModel, scrollBehavior = scrollBehavior)
+                        1 -> SettingsScreen(scrollBehavior = scrollBehavior)
                     }
+
+                    InstallerOverlay(
+                        state = installerState,
+                        onDismiss = { installerState.dismiss() }
+                    )
                 }
-            },
-            floatingActionButton = {
+
+                // 浮动玻璃导航栏：位置同 Termux Ultra（两侧 24.dp，底部贴系统导航栏）。
+                GlassNavigationBar(
+                    items = icons.mapIndexed { index, icon ->
+                        GlassNavigationItem(
+                            icon = icon,
+                            label = labels[index],
+                        )
+                    },
+                    selectedIndex = selectedTab,
+                    onSelect = { index -> selectedTab = index },
+                    backdrop = glassNavBackdrop,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(start = 24.dp, end = 24.dp, bottom = systemNavBarsHeight),
+                )
+
+                // 安装按钮（仅应用列表页），抬到导航栏上方。
                 if (selectedTab == 0) {
                     FloatingActionButton(
                         onClick = {
                             // JAR/JAD 的 MIME 类型并不统一，交给系统选择器自己过滤更可靠
                             filePickerLauncher.launch("*/*")
                         },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 16.dp, bottom = 72.dp + systemNavBarsHeight),
                     ) {
                         Icon(
                             imageVector = MiuixIcons.Add,
@@ -165,22 +213,6 @@ fun MainContent(
                         )
                     }
                 }
-            },
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                when (selectedTab) {
-                    0 -> AppsScreen(appListModel = appListModel, scrollBehavior = scrollBehavior)
-                    1 -> SettingsScreen(scrollBehavior = scrollBehavior)
-                }
-
-                InstallerOverlay(
-                    state = installerState,
-                    onDismiss = { installerState.dismiss() }
-                )
             }
         }
     }

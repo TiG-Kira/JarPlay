@@ -29,6 +29,30 @@ J2ME Loader 的 Android 分支（作者 TiG-Kira），基于上游 `nikita36078/
   虚拟键盘布局存在 SharedPreferences 文件 `keyboard_layout`（键名 `row_N_key_M_label/code`、`keyboard_edited`）。
 - 缩放渲染逻辑在 `javax.microedition.lcdui.Canvas#updateSize()`，改动前先读 `virtualScreen`/`onX/onY/onWidth/onHeight` 的含义。
 
+## miuix-glass 玻璃风格（2026-10-22 引入）
+- 玻璃导航栏核心（`top/yukonga/miuix/kmp/glass` 保留 14 个 .kt：GlassNavigationBar/GlassPanel/
+  GlassMotion/GlassMaterial/GlassStrokes/GlassStyles/GlassShadow/GlassShape/GlassStroke/GlassStyle/
+  GlassDefaults/Glass.kt/GlassPress.kt/GlassNavigationBar.kt/NavigationDragTarget.kt）是 **vendor 源码**，
+  不是 Maven 依赖。`MainActivity` 用悬浮 `GlassNavigationBar`（两侧 24.dp、底部贴系统导航栏）。
+- **依赖**：`miuix-blur-android:0.9.4` + `io.github.kyant0:backdrop-android:2.0.1` +
+  `io.github.kyant0:shapes-android:1.2.1`（kyant0 两个都要 exclude JetBrains Compose 传递依赖）；
+  `resolutionStrategy.force miuix-ui-android:0.9.4`。`navigationevent` 用 `1.1.2`(compose-android 变体)。
+- **不要**把 glass 包的 Popup 系列/`GlassTopAppBar`/`GlassSurface`/`GlassTabRow` 加回来：
+  miuix-ui 0.9.4 不含 `BlurTopAppBar`/`CascadingPopupDefaults`，会编译失败。要用玻璃顶栏只能等
+  miuix-ui 升级或自己补这几个符号。
+- Manifest 必须 `tools:overrideLibrary="top.yukonga.miuix.kmp.blur"`（miuix-blur 声明 minSdk 33，
+  JarPlay minSdk 24；老设备靠 `isRuntimeShaderSupported` 运行时降级，玻璃效果不渲染但不崩）。
+
+## CI / 签名（2026-10-22 引入）
+- Release 打包：`.github/workflows/release_apk.yml`（发布 Release 或手动触发 → 装 SDK/NDK → 解码
+  `JKS_BASE64` 到 `app/ki-terminal-release.jks` → `:app:assembleOpenRelease` → `gh release upload`）。
+- 调试冒烟：`.github/workflows/ci.yml`（push/PR 编 `:app:assembleOpenDebug`，无需 jks）。
+- 签名在 `app/build.gradle` 的 `signingConfigs.release`：`KEYSTORE_FILE`(默认本地绝对路径，CI 用相对)
+  + `KI_TERMINAL_STORE_PASSWORD/KEY_PASSWORD/KEY_ALIAS`（默认 `ki-terminal`）；**debug 用默认调试签名**。
+- **仓库需设 4 个 Secrets**：`JKS_BASE64`、`KI_TERMINAL_STORE_PASSWORD`、`KI_TERMINAL_KEY_PASSWORD`、
+  `KI_TERMINAL_KEY_ALIAS`（口令/alias 均为 `ki-terminal`）。私钥绝不入库（`.gitignore` 已忽略 `*.jks`）。
+- `assembleOpenRelease` 已本地验证：产出 `JarPlay-openRelease.apk` 并签名（证书 CN=KiraStudio，V1/V2/V3 全过）。
+
 ## 已知历史遗留（待清理，未动手）
 - 旧 Material/Fragment 体系仍在仓库里但已不可达：`com.kira.jarplay.MainActivity`(Java)、
   `applist/AppsListFragment`、`settings/SettingsActivity`、`settings/SettingsFragment`、

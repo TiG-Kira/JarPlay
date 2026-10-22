@@ -37,3 +37,7 @@ obj/
 *.tmp
 .DS_Store
 Thumbs.db
+
+# Signing keystore（私钥绝对不能提交；CI 通过 JKS_BASE64 secret 临时解码生成）
+ki-terminal-release.jks
+*.jks
