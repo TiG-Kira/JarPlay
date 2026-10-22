@@ -47,10 +47,15 @@ jobs:
         run: |
           set -e
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          # API 37 正式版采用新命名（android-37.0）；旧命名 android-37 仅存在于 canary 通道，找不到时忽略
+          # API 37 正式版采用新命名（android-37.0）；AGP 仍按旧 hash string 查找目录 android-37
           sdkmanager "platforms;android-37.0" "build-tools;35.0.0" "ndk;22.1.7171670"
-          sdkmanager --channel=3 "platforms;android-37" >/dev/null 2>&1 || \
-            echo "（可选）platforms;android-37 在 canary 通道不存在，跳过"
+          if [ ! -d "$ANDROID_HOME/platforms/android-37" ]; then
+            sdkmanager --channel=3 "platforms;android-37" >/dev/null 2>&1 || true
+          fi
+          if [ ! -d "$ANDROID_HOME/platforms/android-37" ]; then
+            echo "::warning::canary 通道无 android-37，复制 android-37.0 为 android-37 以满足 AGP"
+            cp -a "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
 
       - name: 缓存 Gradle 依赖
         uses: actions/cache@v4
