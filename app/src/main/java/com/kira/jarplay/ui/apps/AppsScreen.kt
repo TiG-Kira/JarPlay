@@ -42,6 +42,7 @@ import com.kira.jarplay.applist.AppItem
 import com.kira.jarplay.applist.AppListModel
 import com.kira.jarplay.util.AppUtils
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Icon
@@ -222,6 +223,7 @@ private fun AppItemCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         insideMargin = PaddingValues(0.dp),
+        colors = CardDefaults.defaultColors(),
         onClick = onLaunch,
         pressFeedbackType = PressFeedbackType.Sink,
     ) {

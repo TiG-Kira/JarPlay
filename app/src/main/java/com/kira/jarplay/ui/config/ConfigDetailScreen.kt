@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -37,23 +38,27 @@ import androidx.compose.ui.unit.dp
 import com.kira.jarplay.R
 import com.kira.jarplay.config.ProfileModel
 import com.kira.jarplay.config.ProfilesManager
+import com.kira.jarplay.ui.glass.rememberGlassPageBackdrop
+import com.kira.jarplay.ui.glass.standaloneContentPadding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.BasicComponentDefaults
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
-import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.glass.GlassIconButton
+import top.yukonga.miuix.kmp.glass.GlassTopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Back
 import top.yukonga.miuix.kmp.icon.extended.Play
+import top.yukonga.miuix.kmp.icon.glass.MiuixGlassIcons
+import top.yukonga.miuix.kmp.icon.glass.ChevronBackward
 import top.yukonga.miuix.kmp.icon.extended.VerticalSplit
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SliderPreference
@@ -98,16 +103,23 @@ fun ConfigDetailScreen(
         }
     }
 
+    val glassPage = rememberGlassPageBackdrop()
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(
+            GlassTopAppBar(
                 title = if (isProfile) profileDirPath.substringAfterLast("/") else (midletName ?: ""),
+                backdrop = glassPage.backdrop,
                 scrollBehavior = scrollBehavior,
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    GlassIconButton(onClick = onBack) {
                         Icon(
-                            imageVector = MiuixIcons.Back,
-                            contentDescription = stringResource(R.string.close)
+                            imageVector = MiuixGlassIcons.ChevronBackward,
+                            contentDescription = stringResource(R.string.close),
+                            tint = MiuixTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
@@ -128,13 +140,15 @@ fun ConfigDetailScreen(
                 }
             }
         }
-    ) { innerPadding ->
+    ) { paddingValues ->
         val current = params
         if (current == null) {
             Box(
                 modifier = Modifier
+                    .then(glassPage.contentModifier)
                     .fillMaxSize()
-                    .padding(innerPadding),
+                    .background(MiuixTheme.colorScheme.background)
+                    .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -146,14 +160,17 @@ fun ConfigDetailScreen(
             return@Scaffold
         }
 
+        Box(
+            modifier = Modifier
+                .then(glassPage.contentModifier)
+                .fillMaxSize()
+                .background(MiuixTheme.colorScheme.background)
+        ) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
-            contentPadding = PaddingValues(
-                top = innerPadding.calculateTopPadding() + 8.dp,
-                bottom = innerPadding.calculateBottomPadding() + 96.dp
-            ),
+            contentPadding = standaloneContentPadding(paddingValues, top = 8.dp, bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             item {
@@ -388,6 +405,7 @@ fun ConfigDetailScreen(
                 }
             }
         }
+        }
     }
 }
 
@@ -398,7 +416,8 @@ private fun SettingCard(content: @Composable ColumnScope.() -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(HorizontalPadding)
-            .padding(bottom = 12.dp)
+            .padding(bottom = 12.dp),
+        colors = CardDefaults.defaultColors()
     ) {
         content()
     }
@@ -471,7 +490,7 @@ private fun ScreenSizeRow(
             onValueChange = onHeightChange,
             modifier = Modifier.weight(1f)
         )
-        IconButton(
+        GlassIconButton(
             onClick = onSwap,
             modifier = Modifier.padding(start = 4.dp)
         ) {

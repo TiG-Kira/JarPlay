@@ -31,6 +31,7 @@ import com.kira.jarplay.R
 import com.kira.jarplay.config.ProfilesActivity
 import com.kira.jarplay.util.Constants
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
@@ -167,7 +168,8 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
-            .padding(bottom = 12.dp)
+            .padding(bottom = 12.dp),
+        colors = CardDefaults.defaultColors()
     ) {
         content()
     }

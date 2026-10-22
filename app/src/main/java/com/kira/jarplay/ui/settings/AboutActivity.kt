@@ -84,6 +84,7 @@ import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -215,15 +216,10 @@ fun AboutScreen(onBack: () -> Unit) {
                 .fillMaxSize()
                 .background(MiuixTheme.colorScheme.background)
         ) {
-            // 呼吸渐变背景层（贴在内容之下）。
-            // 渐变是卡片与页面底色的区分来源：以前滚动到底时 alpha 归零，只剩主题底色，
-            // 而 miuix 的 Card 用 surface 色、与 background 几乎同色，卡片就整片糊进背景里。
-            // 所以这里给渐变留一个下限，滚动到底仍保留一层淡渐变。
-            val gradientAlpha = if (darkTheme) {
-                0.34f + 0.16f * (1f - scrollFraction)
-            } else {
-                0.55f + 0.45f * (1f - scrollFraction)
-            }
+            // 呼吸渐变背景层（贴在内容之下）。渐变随滚动淡出到主题色：
+            // 滚动到底 alpha 归零，只剩主题底色；miuix 的 Card 用 surfaceContainer，
+            // 与 background 区分明显，不会糊进背景里。
+            val gradientAlpha = (1f - scrollFraction) * (if (darkTheme) 0.5f else 1f)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -356,11 +352,12 @@ fun AboutScreen(onBack: () -> Unit) {
                     }
 
                     item {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                        ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.defaultColors()
+                ) {
                             Column(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -386,11 +383,12 @@ fun AboutScreen(onBack: () -> Unit) {
                     }
 
                     item {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                        ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.defaultColors()
+                ) {
                             ArrowPreference(
                                 title = stringResource(R.string.developer_name),
                                 summary = "@TiG-Kira",
@@ -435,11 +433,12 @@ fun AboutScreen(onBack: () -> Unit) {
                             updateResult is UpdateResult.UpToDate -> stringResource(R.string.up_to_date)
                             else -> null
                         }
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                        ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.defaultColors()
+                ) {
                             ArrowPreference(
                                 title = stringResource(R.string.check_updates),
                                 // 默认副标题应是本项自己的描述；此前误用 about_message（应用简介），
@@ -465,11 +464,12 @@ fun AboutScreen(onBack: () -> Unit) {
                     }
 
                     item {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                        ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.defaultColors()
+                ) {
                             SwitchPreference(
                                 title = stringResource(R.string.enable_beta_update),
                                 summary = stringResource(R.string.enable_beta_update_desc),
@@ -492,11 +492,12 @@ fun AboutScreen(onBack: () -> Unit) {
                     }
 
                     item {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                        ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.defaultColors()
+                ) {
                             Column(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -533,11 +534,12 @@ fun AboutScreen(onBack: () -> Unit) {
                     }
 
                     item {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                        ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.defaultColors()
+                ) {
                             Column(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
